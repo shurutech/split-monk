@@ -2,7 +2,7 @@ import Image from 'next/image'
 
 interface Props {
   user: { displayName: string; photoURL: string; uid: string; email?: string }
-  size?: 24 | 32 | 40 | 48
+  size?: 20 | 24 | 28 | 32 | 40 | 48
 }
 
 export function UserAvatar({ user, size = 32 }: Props) {
