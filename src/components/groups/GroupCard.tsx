@@ -40,7 +40,7 @@ export function GroupCard({ group, currentUid }: Props) {
       </div>
 
       {group.startDate && (
-        <p className="text-[#4A4A56] text-xs mb-3">
+        <p className="text-[#8E8E9A] text-xs mb-3">
           {new Date(group.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
           {group.endDate ? ` – ${new Date(group.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
         </p>

@@ -86,7 +86,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {expenses.length > 0 && (
             <button
               onClick={handleExport}
@@ -109,7 +109,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
           {group.status !== 'archived' && (
             <Link
               href={`/groups/${id}/add`}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-sm bg-[#7C6BF8] text-white text-sm font-medium hover:bg-[#6B5CE7] transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-sm bg-[#7C6BF8] text-white text-sm font-medium hover:bg-[#6B5CE7] transition-colors whitespace-nowrap"
             >
               <Plus size={15} /> Add
             </Link>
@@ -118,7 +118,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* Stats bar */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2">
         <StatCard label="Total spent" value={formatINR(group.totalSpend)} />
         <StatCard
           label="Your balance"
@@ -129,12 +129,12 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-[#111113] border border-[#2A2A32] rounded-sm p-1 overflow-x-auto">
+      <div className="flex gap-1 bg-[#111113] border border-[#2A2A32] rounded-sm p-1">
         {TABS.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-medium capitalize transition-all duration-150 whitespace-nowrap min-w-0 ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-medium capitalize transition-all duration-150 ${
               activeTab === tab
                 ? 'bg-[#7C6BF8] text-white'
                 : 'text-[#8E8E9A] hover:text-[#F2F2F7]'
@@ -144,7 +144,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
             {tab === 'balances' && <Scale size={13} />}
             {tab === 'stats'    && <BarChart2 size={13} />}
             {tab === 'members'  && <Users size={13} />}
-            {tab}
+            <span className="hidden sm:inline">{tab}</span>
           </button>
         ))}
       </div>
@@ -198,9 +198,9 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
 
 function StatCard({ label, value, valueClass = 'text-[#F2F2F7]' }: { label: string; value: string; valueClass?: string }) {
   return (
-    <div className="rounded-sm border border-[#2A2A32] bg-[#111113] px-3 py-3">
-      <p className="text-faint text-[10px] uppercase tracking-wide mb-1">{label}</p>
-      <p className={`font-mono text-sm font-medium ${valueClass}`}>{value}</p>
+    <div className="rounded-sm border border-[#2A2A32] bg-[#111113] px-2 py-2.5 sm:px-3 sm:py-3">
+      <p className="text-faint text-[9px] sm:text-[10px] uppercase tracking-wide mb-1 truncate">{label}</p>
+      <p className={`font-mono text-xs sm:text-sm font-medium truncate ${valueClass}`}>{value}</p>
     </div>
   )
 }

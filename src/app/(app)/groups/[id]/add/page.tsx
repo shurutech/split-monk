@@ -194,7 +194,7 @@ export default function AddExpensePage({ params }: { params: Promise<{ id: strin
               placeholder="0"
               min="1"
               step="1"
-              className="bg-transparent border-none outline-none text-[#F2F2F7] font-mono text-4xl font-bold w-48 text-center placeholder-[#2A2A32]"
+              className="bg-transparent border-none outline-none text-[#F2F2F7] font-mono text-4xl font-bold w-36 sm:w-48 text-center placeholder-[#2A2A32]"
             />
           </div>
           <div className="mt-1 h-px bg-linear-to-r from-transparent via-[#7C6BF8] to-transparent" />
@@ -296,11 +296,11 @@ export default function AddExpensePage({ params }: { params: Promise<{ id: strin
                   <button
                     type="button"
                     onClick={() => toggleMember(key)}
-                    className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-colors ${
+                    className={`w-5 h-5 rounded border shrink-0 flex items-center justify-center transition-colors ${
                       selected ? 'bg-[#7C6BF8] border-[#7C6BF8]' : 'border-[#2A2A32]'
                     }`}
                   >
-                    {selected && <Check size={10} className="text-white" strokeWidth={3} />}
+                    {selected && <Check size={11} className="text-white" strokeWidth={3} />}
                   </button>
 
                   {/* Avatar */}
@@ -329,7 +329,7 @@ export default function AddExpensePage({ params }: { params: Promise<{ id: strin
                         onChange={(e) => setExactAmts((prev) => ({ ...prev, [key]: e.target.value }))}
                         placeholder="0"
                         min="0"
-                        className="w-20 bg-[#1A1A1F] border border-[#2A2A32] rounded px-2 py-1 text-[#F2F2F7] font-mono text-xs text-right focus:outline-none focus:border-[#7C6BF8] transition-all"
+                        className="w-16 sm:w-20 bg-[#1A1A1F] border border-[#2A2A32] rounded px-2 py-1 text-[#F2F2F7] font-mono text-xs text-right focus:outline-none focus:border-[#7C6BF8] transition-all"
                       />
                     </div>
                   )}

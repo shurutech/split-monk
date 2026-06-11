@@ -135,7 +135,7 @@ export function GroupSettingsSheet({ open, onClose, group, expenses, balances }:
         role="dialog"
         aria-modal="true"
         aria-label="Trip settings"
-        className="fixed bottom-0 left-0 right-0 z-50 max-w-2xl mx-auto bg-[#111113] border border-[#2A2A32] border-b-0 rounded-t-xl shadow-2xl"
+        className="fixed bottom-0 left-0 right-0 z-50 sm:max-w-2xl sm:mx-auto bg-[#111113] border border-[#2A2A32] border-b-0 rounded-t-xl shadow-2xl"
         style={{ maxHeight: '90dvh', overflowY: 'auto' }}
       >
         {/* Drag handle */}
@@ -175,7 +175,7 @@ export function GroupSettingsSheet({ open, onClose, group, expenses, balances }:
             </div>
 
             {/* Dates */}
-            <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
               <div>
                 <label className="block text-[#8E8E9A] text-xs font-medium mb-1.5">Start date</label>
                 <input
@@ -199,7 +199,7 @@ export function GroupSettingsSheet({ open, onClose, group, expenses, balances }:
             {/* Color */}
             <div className="mb-4">
               <label className="block text-[#8E8E9A] text-xs font-medium mb-2">Color</label>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {GROUP_COLORS.map((c) => (
                   <button
                     key={c.value}

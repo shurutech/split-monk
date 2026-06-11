@@ -22,9 +22,32 @@ export function PWAInstallPrompt() {
       return
     }
 
+    // Rate-limit: max 3 shows per calendar day
+    const STORAGE_KEY = 'pwa_prompt_shows'
+    const today = new Date().toDateString()
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      const data: { date: string; count: number } = raw ? JSON.parse(raw) : { date: today, count: 0 }
+      if (data.date !== today) {
+        // New day — reset
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ date: today, count: 0 }))
+      } else if (data.count >= 3) {
+        // Already shown 3 times today — skip entirely
+        return
+      }
+    } catch { /* ignore storage errors */ }
+
     const handler = (e: Event) => {
       e.preventDefault()
       setPrompt(e as BeforeInstallPromptEvent)
+
+      // Increment show count before making visible
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY)
+        const data: { date: string; count: number } = raw ? JSON.parse(raw) : { date: today, count: 0 }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ date: today, count: data.count + 1 }))
+      } catch { /* ignore */ }
+
       setVisible(true)
     }
 

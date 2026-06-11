@@ -49,7 +49,7 @@ export function ExpenseCard({ expense, groupId, paidByName }: Props) {
       {/* Details */}
       <div className="flex-1 min-w-0">
         <p className="text-[#F2F2F7] text-sm font-medium truncate">{expense.title}</p>
-        <p className="text-[#4A4A56] text-xs mt-0.5">
+        <p className="text-[#4A4A56] text-xs mt-0.5 truncate">
           {paidByName} · {splitCount} people · {relativeDate(expense.date)}
         </p>
       </div>

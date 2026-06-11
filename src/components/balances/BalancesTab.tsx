@@ -121,18 +121,21 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
               const isLoading = settling === key
               return (
                 <div key={key} className="rounded-md border border-[#2A2A32] bg-[#111113] p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    {avatar(s.from)}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[#F2F2F7] text-sm truncate">
-                        <span className="font-medium">{name(s.from)}</span>
-                        <span className="text-faint mx-1.5">pays</span>
-                        <span className="font-medium">{name(s.to)}</span>
-                      </p>
+                  {/* From → amount → to row */}
+                  <div className="flex items-center gap-2 mb-3 min-w-0">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      {avatar(s.from, 28)}
+                      <span className="text-[#F2F2F7] text-sm font-medium truncate">{name(s.from)}</span>
                     </div>
-                    <ArrowRight size={14} className="text-faint shrink-0" />
-                    {avatar(s.to)}
-                    <span className="font-mono text-[#F2F2F7] font-semibold ml-1 shrink-0">{formatINR(s.amount)}</span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <ArrowRight size={13} className="text-faint" />
+                      <span className="font-mono text-[#F2F2F7] text-sm font-semibold">{formatINR(s.amount)}</span>
+                      <ArrowRight size={13} className="text-faint" />
+                    </div>
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1 justify-end">
+                      <span className="text-[#F2F2F7] text-sm font-medium truncate text-right">{name(s.to)}</span>
+                      {avatar(s.to, 28)}
+                    </div>
                   </div>
 
                   {(s.from === currentUid || s.to === currentUid) && (
@@ -141,12 +144,12 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
                         value={noteInput[key] ?? ''}
                         onChange={(e) => setNoteInput((prev) => ({ ...prev, [key]: e.target.value }))}
                         placeholder="Note: GPay, cash…"
-                        className="flex-1 bg-[#1A1A1F] border border-[#2A2A32] rounded-sm px-3 py-1.5 text-[#F2F2F7] text-xs placeholder-faint focus:outline-none focus:border-[#7C6BF8] transition-all"
+                        className="flex-1 min-w-0 bg-[#1A1A1F] border border-[#2A2A32] rounded-sm px-3 py-1.5 text-[#F2F2F7] text-xs placeholder-faint focus:outline-none focus:border-[#7C6BF8] transition-all"
                       />
                       <button
                         onClick={() => handleSettle(s)}
                         disabled={!!settling}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-success-dim text-success text-xs font-medium border border-[rgba(52,211,153,0.25)] hover:bg-[rgba(52,211,153,0.2)] disabled:opacity-50 transition-colors shrink-0"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-success-dim text-success text-xs font-medium border border-[rgba(52,211,153,0.25)] hover:bg-[rgba(52,211,153,0.2)] disabled:opacity-50 transition-colors shrink-0 whitespace-nowrap"
                       >
                         {isLoading ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
                         Mark settled
