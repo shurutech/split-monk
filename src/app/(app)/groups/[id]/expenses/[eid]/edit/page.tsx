@@ -211,7 +211,7 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
   }
 
   return (
-    <div className="max-w-lg mx-auto pb-24">
+    <div className="max-w-lg mx-auto pb-36 md:pb-10">
 
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
@@ -530,7 +530,7 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
       </form>
 
       {/* ── Sticky submit bar ───────────────────────────────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-background/90 backdrop-blur-md border-t border-[#2A2A32] px-4 py-3 md:relative md:border-0 md:bg-transparent md:backdrop-blur-none md:px-0 md:py-0 md:mt-5">
+      <div className="fixed bottom-16 left-0 right-0 z-50 bg-background/90 backdrop-blur-md border-t border-[#2A2A32] px-4 py-3 md:relative md:bottom-auto md:border-0 md:bg-transparent md:backdrop-blur-none md:px-0 md:py-0 md:mt-5">
         <div className="max-w-lg mx-auto flex items-center gap-3">
           {previewError && (
             <p className="flex-1 text-[#F87171] text-xs truncate">{previewError}</p>
