@@ -390,6 +390,9 @@ export async function addExpense(groupId: string, data: AddExpenseInput): Promis
     const expRef   = doc(collection(db, `groups/${groupId}/expenses`))
     const groupRef = doc(db, 'groups', groupId)
 
+    // All reads must come before any writes in a Firestore transaction
+    const groupSnap = await tx.get(groupRef)
+
     tx.set(expRef, {
       title:     data.title,
       amount:    data.amount,
@@ -404,8 +407,6 @@ export async function addExpense(groupId: string, data: AddExpenseInput): Promis
       updatedAt: serverTimestamp(),
       isDeleted: false,
     })
-    // If the group was settled, a new expense re-opens it
-    const groupSnap = await tx.get(groupRef)
     const updates: Record<string, unknown> = { totalSpend: increment(data.amount) }
     if (groupSnap.exists() && groupSnap.data().status === 'settled') {
       updates.status = 'active'
