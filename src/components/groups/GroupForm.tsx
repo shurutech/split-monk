@@ -81,10 +81,10 @@ export function GroupForm({ onSuccess }: { onSuccess?: (id: string) => void }) {
       return
     }
 
-    // Duplicate check
+    // Duplicate check (case-insensitive — email is already lowercased above)
     if (members.some(
-      (m) => (m.type === 'user' && m.user.email === email) ||
-             (m.type === 'pending' && m.email === email)
+      (m) => (m.type === 'user' && m.user.email.toLowerCase() === email) ||
+             (m.type === 'pending' && m.email.toLowerCase() === email)
     )) {
       setEmailError('Already added')
       return
@@ -152,6 +152,11 @@ export function GroupForm({ onSuccess }: { onSuccess?: (id: string) => void }) {
     if (emailInput.trim()) {
       toast.error('Press Enter or Tab to confirm the email before creating')
       inputRef.current?.focus()
+      return
+    }
+
+    if (startDate && endDate && endDate < startDate) {
+      toast.error('End date must be after start date')
       return
     }
 

@@ -26,9 +26,23 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'SplitMonk — Split bills. Stay friends.',
-  description: 'Private expense splitting for the Shuru team.',
+  title: {
+    default:  'SplitMonk — Split bills. Stay friends.',
+    template: '%s · SplitMonk',
+  },
+  description: 'Expense splitting for trips and groups. Track who paid, split fairly, settle up instantly.',
   manifest: '/manifest.json',
+  openGraph: {
+    title:       'SplitMonk — Split bills. Stay friends.',
+    description: 'Expense splitting for trips and groups. Track who paid, split fairly, settle up instantly.',
+    siteName:    'SplitMonk',
+    type:        'website',
+  },
+  twitter: {
+    card:        'summary',
+    title:       'SplitMonk — Split bills. Stay friends.',
+    description: 'Expense splitting for trips and groups.',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',

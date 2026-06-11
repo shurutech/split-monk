@@ -12,10 +12,12 @@ export function useGroup(groupId: string) {
   useEffect(() => {
     if (!groupId) return
     setLoading(true)
-    const unsub = subscribeToGroup(groupId, (g) => {
-      setGroup(g)
-      setLoading(false)
-    })
+    setError(null)
+    const unsub = subscribeToGroup(
+      groupId,
+      (g) => { setGroup(g); setLoading(false) },
+      (err) => { setError(err.message); setLoading(false) },
+    )
     return unsub
   }, [groupId])
 

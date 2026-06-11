@@ -72,6 +72,10 @@ export function GroupSettingsSheet({ open, onClose, group, expenses, balances }:
 
   async function handleSave() {
     if (!name.trim()) { toast.error('Trip name is required'); return }
+    if (startDate && endDate && endDate < startDate) {
+      toast.error('End date must be after start date')
+      return
+    }
     setSaving(true)
     try {
       await updateGroup(group.id, {

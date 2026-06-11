@@ -11,7 +11,7 @@ import { Expense, User } from '@/types'
 import { formatINR } from '@/lib/calculations'
 import { UserAvatar } from '@/components/ui/UserAvatar'
 import { EXPENSE_CATEGORIES } from '@/constants'
-import { ArrowLeft, Trash2, Loader2, Mail } from 'lucide-react'
+import { ArrowLeft, Trash2, Loader2, Mail, Pencil } from 'lucide-react'
 
 function isPendingKey(key: string) { return key.includes('@') }
 import { toast } from 'sonner'
@@ -109,6 +109,15 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
         <h1 className="font-display font-bold text-xl text-[#F2F2F7] flex-1 truncate" style={{ fontFamily: 'var(--font-syne, sans-serif)' }}>
           {expense.title}
         </h1>
+        {canDelete && (
+          <button
+            onClick={() => router.push(`/groups/${id}/expenses/${eid}/edit`)}
+            className="p-2 rounded-sm border border-[#2A2A32] text-[#8E8E9A] hover:text-[#F2F2F7] hover:border-faint transition-colors shrink-0"
+            title="Edit expense"
+          >
+            <Pencil size={15} />
+          </button>
+        )}
       </div>
 
       {/* Main card */}
@@ -126,7 +135,7 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
           </span>
         </div>
 
-        <div className="flex gap-4 text-xs text-[#4A4A56]">
+        <div className="flex gap-4 text-xs text-[#8E8E9A]">
           <span>{new Date(expense.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
           <span className="capitalize">{expense.splitType} split</span>
         </div>

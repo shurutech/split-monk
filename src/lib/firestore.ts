@@ -31,7 +31,7 @@ import type {
   AddExpenseInput,
   CreateSettlementInput,
 } from '@/types'
-import { calculateBalances, getOptimalSettlements } from './calculations'
+import { calculateBalances, getOptimalSettlements, formatINR } from './calculations'
 
 // Firestore doc IDs cannot contain '/' but can contain ','.
 // We encode email dots as commas so "sahil@shurutech.com" → "sahil@shurutech,com".
@@ -352,11 +352,14 @@ export async function removeGroupMember(groupId: string, uid: string): Promise<v
 
 export function subscribeToGroup(
   groupId: string,
-  cb: (group: Group | null) => void,
+  cb:    (group: Group | null) => void,
+  onErr: (err: Error) => void = () => {},
 ): Unsubscribe {
-  return onSnapshot(doc(db, 'groups', groupId), (snap) => {
-    cb(snap.exists() ? docToGroup(snap.id, snap.data() as Record<string, unknown>) : null)
-  })
+  return onSnapshot(
+    doc(db, 'groups', groupId),
+    (snap) => cb(snap.exists() ? docToGroup(snap.id, snap.data() as Record<string, unknown>) : null),
+    (err)  => onErr(err),
+  )
 }
 
 export function subscribeToUserGroups(
@@ -412,12 +415,33 @@ export async function addExpense(groupId: string, data: AddExpenseInput): Promis
 export async function updateExpense(
   groupId: string,
   expenseId: string,
-  data: Partial<Expense>,
+  data: Omit<AddExpenseInput, 'createdBy'>,
 ): Promise<void> {
-  await updateDoc(doc(db, `groups/${groupId}/expenses`, expenseId), {
-    ...data,
-    updatedAt: serverTimestamp(),
-  } as Record<string, unknown>)
+  const expRef   = doc(db, `groups/${groupId}/expenses`, expenseId)
+  const groupRef = doc(db, 'groups', groupId)
+
+  await runTransaction(db, async (tx) => {
+    const expSnap = await tx.get(expRef)
+    if (!expSnap.exists()) throw new Error('Expense not found')
+    const oldAmount = (expSnap.data() as { amount: number }).amount
+    const amountDiff = data.amount - oldAmount
+
+    tx.update(expRef, {
+      title:     data.title,
+      amount:    data.amount,
+      paidBy:    data.paidBy,
+      splitType: data.splitType,
+      splits:    data.splits,
+      date:      Timestamp.fromDate(data.date),
+      notes:     data.notes ?? '',
+      category:  data.category,
+      updatedAt: serverTimestamp(),
+    })
+
+    if (amountDiff !== 0) {
+      tx.update(groupRef, { totalSpend: increment(amountDiff) })
+    }
+  })
 }
 
 export async function softDeleteExpense(groupId: string, expenseId: string): Promise<void> {
@@ -457,6 +481,14 @@ export async function recordSettlement(
   allMembers: string[],
   pendingInvites: string[] = [],
 ): Promise<void> {
+  // Cap: settlement amount must not exceed the outstanding balance between from→to
+  const currentBalances = calculateBalances(allExpenses, allMembers, pendingInvites, allSettlements)
+  const fromBalance     = currentBalances.find((b) => b.uid === data.from)?.net ?? 0
+  // from's net should be negative (they owe); the max they can pay is |fromBalance|
+  if (data.amount > Math.abs(fromBalance) + 1) {
+    throw new Error(`Amount exceeds outstanding balance of ${formatINR(Math.abs(fromBalance))}`)
+  }
+
   // Build the new settlement to include in balance check
   const newSettlement: Settlement = {
     id:        '__pending__',

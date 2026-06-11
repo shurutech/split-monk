@@ -24,7 +24,7 @@ type Tab = typeof TABS[number]
 export default function GroupDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id }                    = use(params)
   const { user }                  = useAuthContext()
-  const { group, loading }        = useGroup(id)
+  const { group, loading, error } = useGroup(id)
   const { expenses, loading: expLoading }             = useExpenses(id)
   const { settlements: recordedSettlements }          = useSettlements(id)
   const [activeTab,     setActiveTab]     = useState<Tab>('expenses')
@@ -41,6 +41,15 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
     )
   }
 
+  if (error) {
+    return (
+      <div className="text-center py-20 text-[#8E8E9A]">
+        Failed to load trip.{' '}
+        <Link href="/dashboard" className="text-[#7C6BF8] underline">Go home</Link>
+      </div>
+    )
+  }
+
   if (!group) {
     return (
       <div className="text-center py-20 text-[#8E8E9A]">
@@ -50,9 +59,11 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
     )
   }
 
-  const balances            = expLoading ? [] : calculateBalances(expenses, group.members, group.pendingInvites ?? [], recordedSettlements)
+  const balances              = expLoading ? [] : calculateBalances(expenses, group.members, group.pendingInvites ?? [], recordedSettlements)
   const settlementSuggestions = balances.length ? getOptimalSettlements(balances) : []
-  const myBalance   = balances.find((b) => b.uid === user?.uid)
+  const myBalance             = balances.find((b) => b.uid === user?.uid)
+  // Compute totalSpend from live expenses to avoid counter drift
+  const totalSpend            = expLoading ? group.totalSpend : expenses.reduce((sum, e) => sum + e.amount, 0)
 
   async function handleExport() {
     setExporting(true)
@@ -119,7 +130,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
 
       {/* Stats bar */}
       <div className="grid grid-cols-3 gap-2">
-        <StatCard label="Total spent" value={formatINR(group.totalSpend)} />
+        <StatCard label="Total spent" value={formatINR(totalSpend)} />
         <StatCard
           label="Your balance"
           value={myBalance ? (myBalance.net >= 0 ? `+${formatINR(myBalance.net)}` : formatINR(myBalance.net)) : '—'}
