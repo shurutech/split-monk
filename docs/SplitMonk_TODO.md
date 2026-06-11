@@ -29,45 +29,45 @@
 
 ### 0.1 GitHub Repo
 
-- [ ] Create private GitHub repo: `github.com/shurutech/splitmonk`
-- [ ] Add `.gitignore` for Next.js (GitHub will offer this on creation)
-- [ ] Go to repo **Settings → Branches** → set `main` as default, enable branch protection (require PR before merge — optional but good habit)
+- [✅] Create private GitHub repo: `github.com/shurutech/splitmonk`
+- [✅] Add `.gitignore` for Next.js (GitHub will offer this on creation)
+- [✅] Go to repo **Settings → Branches** → set `main` as default, enable branch protection (require PR before merge — optional but good habit)
 
 ### 0.2 Firebase Project
 
-- [ ] Go to [console.firebase.google.com](https://console.firebase.google.com)
-- [ ] Click **Add Project** → name it `splitmonk-prod`
-- [ ] Disable Google Analytics (not needed)
-- [ ] Once created, go to **Build → Authentication → Get Started**
-- [ ] Under **Sign-in providers**, enable **Google**
+- [✅] Go to [console.firebase.google.com](https://console.firebase.google.com)
+- [✅] Click **Add Project** → name it `splitmonk`
+- [✅] Disable Google Analytics (not needed)
+- [✅] Once created, go to **Build → Authentication → Get Started**
+- [✅] Under **Sign-in providers**, enable **Google**
   - Set project public-facing name: `SplitMonk`
   - Set support email to your email
   - Save
-- [ ] Go to **Build → Firestore Database → Create Database**
+- [✅] Go to **Build → Firestore Database → Create Database**
   - Choose **production mode** (we'll set real rules in Phase 2)
   - Choose region: `asia-south1` (Mumbai — closest to India)
-- [ ] Go to **Project Settings → General**
+- [✅] Go to **Project Settings → General**
   - Scroll to **Your apps** → click `</>` (Web)
   - App nickname: `splitmonk-web`
   - **Do NOT enable Firebase Hosting** (we're using Vercel)
   - Register app → copy the `firebaseConfig` object — save it somewhere, you'll need it in Phase 1
-- [ ] Go to **Project Settings → Usage and billing** → upgrade to **Blaze (pay-as-you-go)** plan
+- [✅] Go to **Project Settings → Usage and billing** → upgrade to **Blaze (pay-as-you-go)** plan
   - Required for production. Set a billing alert at $5/month — you'll never hit it for team usage.
 
 ### 0.3 Google OAuth — Authorized Domains
 
-- [ ] Still in Firebase console → **Authentication → Settings → Authorized domains**
-- [ ] Note: `localhost` is already there. After you get your Vercel URL in Phase 1, come back and add it here.
+- [✅] Still in Firebase console → **Authentication → Settings → Authorized domains**
+- [✅] Note: `localhost` is already there. After you get your Vercel URL in Phase 1, come back and add it here.
 
 ### 0.4 Vercel Account
 
-- [ ] Go to [vercel.com](https://vercel.com) → Sign in with GitHub
-- [ ] We won't create the project yet — Vercel project is created during Phase 1 after pushing the repo.
+- [✅] Go to [vercel.com](https://vercel.com) → Sign in with GitHub
+- [✅] We won't create the project yet — Vercel project is created during Phase 1 after pushing the repo.
 
 ### 0.5 Node.js Environment
 
-- [ ] Ensure Node.js `v18+` is installed locally: `node --version`
-- [ ] Ensure `pnpm` is installed: `npm install -g pnpm` (we use pnpm, not npm — faster, better lockfile)
+- [✅] Ensure Node.js `v18+` is installed locally: `node --version`
+- [✅] Ensure `pnpm` is installed: `npm install -g pnpm` (we use pnpm, not npm — faster, better lockfile)
 
 ### 0.6 Environment Variables Cheatsheet
 
@@ -89,7 +89,7 @@ NEXT_PUBLIC_FIREBASE_APP_ID
 Before moving to Phase 1, confirm:
 
 - [ ] GitHub repo is created and accessible
-- [ ] Firebase project `splitmonk-prod` exists with Auth + Firestore enabled
+- [ ] Firebase project `splitmonk` exists with Auth + Firestore enabled
 - [ ] Google sign-in provider is enabled in Firebase Auth
 - [ ] Firestore is in production mode, region `asia-south1`
 - [ ] Firebase app is registered and `firebaseConfig` is saved
