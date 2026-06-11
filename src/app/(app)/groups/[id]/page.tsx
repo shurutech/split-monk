@@ -180,6 +180,8 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
           currentUid={user?.uid ?? ''}
           groupName={group.name}
           coverColor={group.coverColor}
+          balances={balances}
+          onLeft={() => router.replace('/dashboard')}
         />
       )}
 

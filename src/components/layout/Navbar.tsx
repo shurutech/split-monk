@@ -28,8 +28,8 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-[#2A2A32] bg-background/80 backdrop-blur-md">
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-        <Link href="/dashboard" className="font-display font-bold text-lg text-gradient" style={{ fontFamily: 'var(--font-syne, sans-serif)' }}>
-          SplitMonk
+        <Link href="/dashboard" className="font-display font-bold text-lg" style={{ fontFamily: 'var(--font-syne, sans-serif)' }}>
+          <span className="text-white">Split</span><span className="text-gradient">Monk</span>
         </Link>
 
         {user && (

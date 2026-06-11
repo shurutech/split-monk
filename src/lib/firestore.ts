@@ -15,6 +15,7 @@ import {
   runTransaction,
   writeBatch,
   arrayUnion,
+  arrayRemove,
   increment,
   Timestamp,
   Unsubscribe,
@@ -236,22 +237,15 @@ export async function resolvePendingInvites(uid: string, email: string): Promise
   }
 }
 
-// Used to remove a specific pending invite when the group creator cancels it
 export async function removePendingInvite(groupId: string, email: string): Promise<void> {
-  const batch    = writeBatch(db)
-  const groupRef = doc(db, 'groups', groupId)
-  const groupSnap = await getDoc(groupRef)
-  if (!groupSnap.exists()) return
-
-  const groupData = groupSnap.data() as Record<string, unknown>
-  const pending   = (groupData.pendingInvites as string[]) ?? []
-  batch.update(groupRef, { pendingInvites: pending.filter((e) => e !== email) })
-
-  // Remove this groupId from the invite doc; delete if no groups left
+  const groupRef   = doc(db, 'groups', groupId)
   const inviteRef  = doc(db, 'invites', encodeEmail(email))
   const inviteSnap = await getDoc(inviteRef)
+
+  const batch = writeBatch(db)
+  batch.update(groupRef, { pendingInvites: arrayRemove(email) })
   if (inviteSnap.exists()) {
-    const invite   = inviteSnap.data() as Invite
+    const invite    = inviteSnap.data() as Invite
     const remaining = (invite.groupIds ?? []).filter((id) => id !== groupId)
     if (remaining.length === 0) {
       batch.delete(inviteRef)
@@ -259,7 +253,6 @@ export async function removePendingInvite(groupId: string, email: string): Promi
       batch.update(inviteRef, { groupIds: remaining })
     }
   }
-
   await batch.commit()
 }
 
@@ -349,6 +342,12 @@ export async function getGroupById(groupId: string): Promise<Group | null> {
   const snap = await getDoc(doc(db, 'groups', groupId))
   if (!snap.exists()) return null
   return docToGroup(snap.id, snap.data() as Record<string, unknown>)
+}
+
+// Remove a confirmed member from a group.
+// Caller must verify the member has no unsettled balance before calling.
+export async function removeGroupMember(groupId: string, uid: string): Promise<void> {
+  await updateDoc(doc(db, 'groups', groupId), { members: arrayRemove(uid) })
 }
 
 export function subscribeToGroup(
