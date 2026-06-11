@@ -1,0 +1,92 @@
+export interface User {
+  uid: string
+  email: string
+  displayName: string
+  photoURL: string
+  createdAt: Date
+  lastActiveAt: Date
+}
+
+export interface Group {
+  id: string
+  name: string
+  description?: string
+  createdBy: string
+  members: string[]
+  startDate?: Date
+  endDate?: Date
+  status: 'active' | 'settled' | 'archived'
+  totalSpend: number
+  createdAt: Date
+  coverColor: string
+}
+
+export interface Split {
+  [uid: string]: number // amount in PAISE
+}
+
+export interface Expense {
+  id: string
+  title: string
+  amount: number // in PAISE (₹1 = 100 paise)
+  paidBy: string
+  splitType: 'equal' | 'exact' | 'percentage'
+  splits: Split
+  date: Date
+  notes?: string
+  category: 'food' | 'stay' | 'transport' | 'activity' | 'shopping' | 'other'
+  createdBy: string
+  createdAt: Date
+  updatedAt: Date
+  isDeleted: boolean
+}
+
+export interface Settlement {
+  id: string
+  from: string
+  to: string
+  amount: number // in PAISE
+  settledAt: Date
+  settledBy: string
+  note?: string
+}
+
+export interface Balance {
+  uid: string
+  net: number // positive = owed to you, negative = you owe
+}
+
+export interface SettlementSuggestion {
+  from: string
+  to: string
+  amount: number
+}
+
+export interface CreateGroupInput {
+  name: string
+  description?: string
+  members: string[]
+  startDate?: Date
+  endDate?: Date
+  coverColor: string
+}
+
+export interface AddExpenseInput {
+  title: string
+  amount: number // in PAISE
+  paidBy: string
+  splitType: 'equal' | 'exact' | 'percentage'
+  splits: Split
+  date: Date
+  notes?: string
+  category: 'food' | 'stay' | 'transport' | 'activity' | 'shopping' | 'other'
+  createdBy: string
+}
+
+export interface CreateSettlementInput {
+  from: string
+  to: string
+  amount: number
+  settledBy: string
+  note?: string
+}

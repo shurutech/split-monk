@@ -1,0 +1,115 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* SplitMonk design tokens */
+  --color-background:  #0A0A0B;
+  --color-surface:     #111113;
+  --color-elevated:    #1A1A1F;
+  --color-border-base: #2A2A32;
+  --color-foreground:  #F2F2F7;
+  --color-muted:       #8E8E9A;
+  --color-faint:       #4A4A56;
+
+  --color-accent:         #7C6BF8;
+  --color-accent-dim:     rgba(124, 107, 248, 0.12);
+  --color-accent-border:  rgba(124, 107, 248, 0.25);
+
+  --color-success:     #34D399;
+  --color-success-dim: rgba(52, 211, 153, 0.12);
+  --color-danger:      #F87171;
+  --color-danger-dim:  rgba(248, 113, 113, 0.12);
+  --color-warning:     #FBBF24;
+  --color-warning-dim: rgba(251, 191, 36, 0.12);
+
+  /* shadcn/ui token overrides */
+  --color-card:              #111113;
+  --color-card-foreground:   #F2F2F7;
+  --color-popover:           #111113;
+  --color-popover-foreground:#F2F2F7;
+  --color-primary:           #7C6BF8;
+  --color-primary-foreground:#ffffff;
+  --color-secondary:         #1A1A1F;
+  --color-secondary-foreground: #F2F2F7;
+  --color-muted-base:        #1A1A1F;
+  --color-muted-foreground:  #8E8E9A;
+  --color-accent-base:       #1A1A1F;
+  --color-accent-foreground: #F2F2F7;
+  --color-destructive:       #F87171;
+  --color-border:            #2A2A32;
+  --color-input:             #1A1A1F;
+  --color-ring:              #7C6BF8;
+
+  /* Font families */
+  --font-display:  var(--font-syne), sans-serif;
+  --font-body:     var(--font-inter), sans-serif;
+  --font-mono:     var(--font-jetbrains), monospace;
+  --font-sans:     var(--font-inter), sans-serif;
+  --font-geist-mono: var(--font-jetbrains), monospace;
+
+  /* Border radius */
+  --radius: 0.75rem;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* Box shadows */
+  --shadow-glow:         0 0 24px rgba(124, 107, 248, 0.15);
+  --shadow-glow-success: 0 0 16px rgba(52, 211, 153, 0.10);
+  --shadow-glow-danger:  0 0 16px rgba(248, 113, 113, 0.10);
+  --shadow-card:         0 0 0 1px #2A2A32;
+  --shadow-card-hover:   0 0 0 1px rgba(124, 107, 248, 0.25), 0 0 24px rgba(124, 107, 248, 0.10);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border-base);
+    outline-color: color-mix(in srgb, var(--color-ring) 50%, transparent);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html {
+    font-family: var(--font-body);
+  }
+
+  /* Dark scrollbar */
+  ::-webkit-scrollbar        { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track  { background: var(--color-background); }
+  ::-webkit-scrollbar-thumb  { background: var(--color-border-base); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-faint); }
+}
+
+@layer utilities {
+  .text-gradient {
+    background: linear-gradient(135deg, #7C6BF8 0%, #A78BFA 50%, #C4B5FD 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .bg-card-gradient {
+    background: linear-gradient(135deg, #1A1A1F 0%, #111113 100%);
+  }
+
+  .glow-accent {
+    box-shadow: var(--shadow-glow);
+  }
+  .glow-success {
+    box-shadow: var(--shadow-glow-success);
+  }
+  .glow-danger {
+    box-shadow: var(--shadow-glow-danger);
+  }
+}
