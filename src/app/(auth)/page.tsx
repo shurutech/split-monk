@@ -61,7 +61,7 @@ export default function LandingPage() {
         {/* Logo mark */}
         <div className="mb-8 inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#2A2A32] bg-[#111113] text-[#8E8E9A] text-sm">
           <span className="w-2 h-2 rounded-full bg-[#34D399] animate-pulse" />
-          Built for Shuru Tech · @shurutech.com only
+          Split bills with anyone · No spreadsheets
         </div>
 
         <h1
@@ -78,7 +78,7 @@ export default function LandingPage() {
           ref={subRef}
           className="opacity-0 text-[#8E8E9A] text-lg md:text-xl max-w-md mx-auto mb-10 leading-relaxed"
         >
-          Private expense splitting for the Shuru team. No spreadsheets. No WhatsApp math. No awkward asking.
+          Expense splitting for trips and groups. No spreadsheets. No WhatsApp math. No awkward asking.
         </p>
 
         <div ref={ctaRef} className="opacity-0 mb-20">

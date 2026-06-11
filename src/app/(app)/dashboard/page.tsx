@@ -3,8 +3,6 @@
 import { useAuthContext } from '@/components/auth/AuthProvider'
 import { useUserGroups } from '@/hooks/useGroup'
 import { useExpenses } from '@/hooks/useExpenses'
-import { calculateBalances } from '@/lib/calculations'
-import { AmountDisplay } from '@/components/ui/AmountDisplay'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { GroupCardSkeleton } from '@/components/ui/LoadingSkeleton'
 import { GroupCard } from '@/components/groups/GroupCard'

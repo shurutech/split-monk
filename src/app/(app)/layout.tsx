@@ -12,7 +12,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router            = useRouter()
 
   useEffect(() => {
-    if (!loading && !user) router.replace('/')
+    if (!loading && !user) {
+      const intended = window.location.pathname + window.location.search
+      const redirect = intended !== '/' ? `/?redirect=${encodeURIComponent(intended)}` : '/'
+      router.replace(redirect)
+    }
   }, [user, loading, router])
 
   if (loading) {

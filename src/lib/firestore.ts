@@ -397,7 +397,13 @@ export async function addExpense(groupId: string, data: AddExpenseInput): Promis
       updatedAt: serverTimestamp(),
       isDeleted: false,
     })
-    tx.update(groupRef, { totalSpend: increment(data.amount) })
+    // If the group was settled, a new expense re-opens it
+    const groupSnap = await tx.get(groupRef)
+    const updates: Record<string, unknown> = { totalSpend: increment(data.amount) }
+    if (groupSnap.exists() && groupSnap.data().status === 'settled') {
+      updates.status = 'active'
+    }
+    tx.update(groupRef, updates)
     ref = expRef
   })
 

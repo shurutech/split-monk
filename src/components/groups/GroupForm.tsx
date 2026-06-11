@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, KeyboardEvent } from 'react'
 import { useAuthContext } from '@/components/auth/AuthProvider'
 import { getAllUsers, getUserByEmail, createGroup } from '@/lib/firestore'
-import { GROUP_COLORS, MAX_GROUP_NAME_LENGTH, MIN_GROUP_MEMBERS, ALLOWED_DOMAIN } from '@/constants'
+import { GROUP_COLORS, MAX_GROUP_NAME_LENGTH, MIN_GROUP_MEMBERS } from '@/constants'
 import { UserAvatar } from '@/components/ui/UserAvatar'
 import { User } from '@/types'
 import { useRouter } from 'next/navigation'
@@ -75,9 +75,9 @@ export function GroupForm({ onSuccess }: { onSuccess?: (id: string) => void }) {
     const email = rawEmail.trim().toLowerCase()
     if (!email) return
 
-    // Domain check
-    if (!email.endsWith(`@${ALLOWED_DOMAIN}`)) {
-      setEmailError(`Only @${ALLOWED_DOMAIN} emails are allowed`)
+    // Basic email format check
+    if (!email.includes('@') || !email.includes('.')) {
+      setEmailError('Enter a valid email address')
       return
     }
 
@@ -376,7 +376,7 @@ export function GroupForm({ onSuccess }: { onSuccess?: (id: string) => void }) {
 
         {/* Hint */}
         <p className="text-faint text-[10px] mt-1.5">
-          Type a name to search · Type a full @shurutech.com email to invite · Press Enter or comma to add
+          Type a name to search · Type a full email to invite · Press Enter or comma to add
         </p>
 
         {emailError && (

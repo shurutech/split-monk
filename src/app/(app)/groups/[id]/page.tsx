@@ -106,7 +106,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
               <Settings size={15} />
             </button>
           )}
-          {group.status === 'active' && (
+          {group.status !== 'archived' && (
             <Link
               href={`/groups/${id}/add`}
               className="flex items-center gap-1.5 px-3 py-2 rounded-sm bg-[#7C6BF8] text-white text-sm font-medium hover:bg-[#6B5CE7] transition-colors"
@@ -172,7 +172,15 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
         <SpendingAnalytics expenses={expenses} />
       )}
       {activeTab === 'members' && (
-        <MemberList memberUids={group.members} pendingInvites={group.pendingInvites ?? []} createdBy={group.createdBy} />
+        <MemberList
+          groupId={id}
+          memberUids={group.members}
+          pendingInvites={group.pendingInvites ?? []}
+          createdBy={group.createdBy}
+          currentUid={user?.uid ?? ''}
+          groupName={group.name}
+          coverColor={group.coverColor}
+        />
       )}
 
       <GroupSettingsSheet

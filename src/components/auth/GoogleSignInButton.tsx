@@ -1,19 +1,21 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { signInWithGoogle } from '@/lib/auth'
 
 export function GoogleSignInButton({ size = 'default' }: { size?: 'default' | 'large' }) {
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
+  const router       = useRouter()
+  const searchParams = useSearchParams()
 
   async function handleSignIn() {
     setLoading(true)
     try {
       await signInWithGoogle()
-      router.push('/dashboard')
+      const redirect = searchParams.get('redirect')
+      router.push(redirect ?? '/dashboard')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sign in failed.'
       toast.error(message)

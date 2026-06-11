@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { ALLOWED_DOMAIN } from '@/constants'
-
 export interface InvitePayload {
   groupId:     string
   groupName:   string
@@ -20,7 +18,8 @@ interface ScriptResult {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   // ── Guard: env var must be set ──────────────────────────────────────────────
-  const scriptUrl = process.env.APPS_SCRIPT_MAILER_URL
+  const scriptUrl    = process.env.APPS_SCRIPT_MAILER_URL
+  const scriptSecret = process.env.APPS_SCRIPT_SECRET ?? ''
   if (!scriptUrl) {
     console.warn('[invite] APPS_SCRIPT_MAILER_URL not set — skipping email invites')
     return NextResponse.json({ skipped: true, reason: 'mailer not configured' }, { status: 200 })
@@ -45,13 +44,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ results: [] }, { status: 200 })
   }
 
-  // ── Domain guard — never send outside @shurutech.com ───────────────────────
+  // Basic sanity filter — must look like an email
   const validEmails = pendingEmails.filter(
-    (e) => typeof e === 'string' && e.toLowerCase().endsWith(`@${ALLOWED_DOMAIN}`)
+    (e) => typeof e === 'string' && e.includes('@') && e.includes('.')
   )
 
   if (validEmails.length === 0) {
-    return NextResponse.json({ error: 'No valid @' + ALLOWED_DOMAIN + ' emails' }, { status: 400 })
+    return NextResponse.json({ error: 'No valid emails provided' }, { status: 400 })
   }
 
   // ── Fan out — one POST per email, all in parallel ───────────────────────────
@@ -62,6 +61,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            secret:      scriptSecret,
             to:          email,
             groupName,
             groupId,

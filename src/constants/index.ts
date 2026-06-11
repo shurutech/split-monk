@@ -1,4 +1,5 @@
-export const ALLOWED_DOMAIN = 'shurutech.com'
+// No domain restriction — any Google account can sign in and be invited
+export const ALLOWED_DOMAIN = ''
 
 export const GROUP_COLORS = [
   { name: 'Violet', value: '#7C6BF8' },

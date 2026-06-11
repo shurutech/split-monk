@@ -5,18 +5,12 @@ import {
 } from 'firebase/auth'
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db } from '@/lib/firebase'
-import { ALLOWED_DOMAIN } from '@/constants'
 import { resolvePendingInvites } from '@/lib/firestore'
 
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider()
   const result   = await signInWithPopup(auth, provider)
   const user     = result.user
-
-  if (!user.email?.endsWith(`@${ALLOWED_DOMAIN}`)) {
-    await firebaseSignOut(auth)
-    throw new Error(`Access restricted to @${ALLOWED_DOMAIN} accounts only.`)
-  }
 
   const userRef = doc(db, 'users', user.uid)
   const snap    = await getDoc(userRef)

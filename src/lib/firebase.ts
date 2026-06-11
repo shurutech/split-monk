@@ -1,6 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
-import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore'
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore'
 
 const firebaseConfig = {
   apiKey:            process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
@@ -14,18 +14,13 @@ const firebaseConfig = {
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
 
 export const auth = getAuth(app)
-export const db   = getFirestore(app)
 
-// Enable offline persistence — writes queue locally, sync on reconnect
-if (typeof window !== 'undefined') {
-  enableIndexedDbPersistence(db).catch((err) => {
-    if (err.code === 'failed-precondition') {
-      // Multiple tabs open — persistence only works in one tab at a time
-      console.warn('Firestore persistence unavailable: multiple tabs open')
-    } else if (err.code === 'unimplemented') {
-      console.warn('Firestore persistence not supported in this browser')
-    }
-  })
-}
+// Use the modern persistent cache API — supports multiple tabs and is not deprecated.
+// Falls back gracefully if IndexedDB is unavailable (private browsing, no disk space, etc.)
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager(),
+  }),
+})
 
 export default app

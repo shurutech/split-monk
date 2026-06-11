@@ -2,8 +2,12 @@
 // Deploy as Web App: Execute as Me, Anyone can access
 // Paste this entire file into the Apps Script editor.
 
-var ALLOWED_DOMAIN = 'shurutech.com';
-var APP_URL        = 'https://splitmonk.vercel.app'; // update if custom domain
+var APP_URL = 'https://splitmonk.vercel.app'; // update if custom domain
+
+// Set this to any random string, then add the same value as
+// APPS_SCRIPT_SECRET in your .env.local and Vercel env vars.
+// Leave empty ('') to disable the check during local testing.
+var SECRET = PropertiesService.getScriptProperties().getProperty('SPLITMONK_SECRET') || '';
 
 function doPost(e) {
   try {
@@ -19,6 +23,11 @@ function doPost(e) {
       return jsonResponse(400, 'Invalid JSON');
     }
 
+    // ── Secret check — reject requests without the correct token ─────────────
+    if (SECRET && payload.secret !== SECRET) {
+      return jsonResponse(401, 'Unauthorized');
+    }
+
     var to          = payload.to;
     var groupName   = payload.groupName;
     var groupId     = payload.groupId;
@@ -32,9 +41,9 @@ function doPost(e) {
       return jsonResponse(400, 'Missing required fields: to, groupName, groupId, invitedBy');
     }
 
-    // ── Domain guard — defense in depth ──────────────────────────────────────
-    if (typeof to !== 'string' || !to.toLowerCase().endsWith('@' + ALLOWED_DOMAIN)) {
-      return jsonResponse(403, 'Recipient must be @' + ALLOWED_DOMAIN);
+    // Basic email sanity check
+    if (typeof to !== 'string' || !to.includes('@')) {
+      return jsonResponse(400, 'Invalid recipient email');
     }
 
     var groupUrl = APP_URL + '/groups/' + groupId;
@@ -114,7 +123,7 @@ function buildHtml(to, groupName, groupId, groupUrl, invitedBy, coverColor, star
 
     // Footer
     + '<tr><td style="padding-top:20px;text-align:center;">'
-    + '<p style="margin:0;color:#4A4A56;font-size:11px;">SplitMonk · Only for @' + ALLOWED_DOMAIN + ' accounts</p>'
+    + '<p style="margin:0;color:#4A4A56;font-size:11px;">SplitMonk · Split bills. Stay friends.</p>'
     + '</td></tr>'
 
     + '</table>'
