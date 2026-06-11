@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuthContext } from '@/components/auth/AuthProvider'
 import { Navbar } from '@/components/layout/Navbar'
 import { BottomNav } from '@/components/layout/BottomNav'
+import { PWAInstallPrompt } from '@/components/ui/PWAInstallPrompt'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuthContext()
@@ -31,6 +32,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <BottomNav />
+      <PWAInstallPrompt />
     </div>
   )
 }

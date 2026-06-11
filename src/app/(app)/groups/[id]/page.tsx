@@ -6,14 +6,18 @@ import { useGroup } from '@/hooks/useGroup'
 import { useExpenses } from '@/hooks/useExpenses'
 import { useAuthContext } from '@/components/auth/AuthProvider'
 import { calculateBalances, getOptimalSettlements, formatINR } from '@/lib/calculations'
+import { getAllUsers } from '@/lib/firestore'
+import { exportGroupToCSV } from '@/lib/export'
 import { ExpenseList } from '@/components/expenses/ExpenseList'
 import { BalancesTab } from '@/components/balances/BalancesTab'
 import { MemberList } from '@/components/groups/MemberList'
+import { SpendingAnalytics } from '@/components/groups/SpendingAnalytics'
 import { GroupCardSkeleton } from '@/components/ui/LoadingSkeleton'
-import { ArrowLeft, Plus, Users, ReceiptText, Scale } from 'lucide-react'
+import { ArrowLeft, Plus, Users, ReceiptText, Scale, BarChart2, Download } from 'lucide-react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 
-const TABS = ['expenses', 'balances', 'members'] as const
+const TABS = ['expenses', 'balances', 'stats', 'members'] as const
 type Tab = typeof TABS[number]
 
 export default function GroupDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -22,6 +26,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   const { group, loading }        = useGroup(id)
   const { expenses, loading: expLoading } = useExpenses(id)
   const [activeTab, setActiveTab] = useState<Tab>('expenses')
+  const [exporting, setExporting] = useState(false)
   const router                    = useRouter()
 
   if (loading) {
@@ -46,6 +51,19 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   const settlements = balances.length ? getOptimalSettlements(balances) : []
   const myBalance   = balances.find((b) => b.uid === user?.uid)
 
+  async function handleExport() {
+    setExporting(true)
+    try {
+      const users = await getAllUsers()
+      if (group) exportGroupToCSV(group, expenses, users)
+      toast.success('CSV downloaded')
+    } catch {
+      toast.error('Export failed')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
 
@@ -65,14 +83,26 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
             </p>
           )}
         </div>
-        {group.status === 'active' && (
-          <Link
-            href={`/groups/${id}/add`}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-sm bg-[#7C6BF8] text-white text-sm font-medium hover:bg-[#6B5CE7] transition-colors"
-          >
-            <Plus size={15} /> Add
-          </Link>
-        )}
+        <div className="flex items-center gap-2">
+          {expenses.length > 0 && (
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="p-2 rounded-sm border border-[#2A2A32] text-[#8E8E9A] hover:text-[#F2F2F7] hover:border-faint transition-colors disabled:opacity-50"
+              title="Export CSV"
+            >
+              <Download size={15} />
+            </button>
+          )}
+          {group.status === 'active' && (
+            <Link
+              href={`/groups/${id}/add`}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-sm bg-[#7C6BF8] text-white text-sm font-medium hover:bg-[#6B5CE7] transition-colors"
+            >
+              <Plus size={15} /> Add
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Stats bar */}
@@ -87,12 +117,12 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-[#111113] border border-[#2A2A32] rounded-sm p-1">
+      <div className="flex gap-1 bg-[#111113] border border-[#2A2A32] rounded-sm p-1 overflow-x-auto">
         {TABS.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-medium capitalize transition-all duration-150 ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded text-xs font-medium capitalize transition-all duration-150 whitespace-nowrap min-w-0 ${
               activeTab === tab
                 ? 'bg-[#7C6BF8] text-white'
                 : 'text-[#8E8E9A] hover:text-[#F2F2F7]'
@@ -100,6 +130,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
           >
             {tab === 'expenses' && <ReceiptText size={13} />}
             {tab === 'balances' && <Scale size={13} />}
+            {tab === 'stats'    && <BarChart2 size={13} />}
             {tab === 'members'  && <Users size={13} />}
             {tab}
           </button>
@@ -123,6 +154,9 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
           expenses={expenses}
           currentUid={user?.uid ?? ''}
         />
+      )}
+      {activeTab === 'stats' && (
+        <SpendingAnalytics expenses={expenses} />
       )}
       {activeTab === 'members' && (
         <MemberList memberUids={group.members} createdBy={group.createdBy} />
