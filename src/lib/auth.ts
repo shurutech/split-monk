@@ -6,6 +6,7 @@ import {
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db } from '@/lib/firebase'
 import { ALLOWED_DOMAIN } from '@/constants'
+import { resolvePendingInvites } from '@/lib/firestore'
 
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider()
@@ -31,6 +32,14 @@ export async function signInWithGoogle() {
     })
   } else {
     await setDoc(userRef, { lastActiveAt: serverTimestamp() }, { merge: true })
+  }
+
+  // Resolve any pending group invites for this email — fire-and-forget,
+  // failures here must not block sign-in.
+  if (user.email) {
+    resolvePendingInvites(user.uid, user.email).catch((err) => {
+      console.error('[auth] resolvePendingInvites failed:', err)
+    })
   }
 
   return user

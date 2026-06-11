@@ -1,4 +1,4 @@
-import type { Balance, Expense, SettlementSuggestion, Split } from '@/types'
+import type { Balance, Expense, Settlement, SettlementSuggestion, Split } from '@/types'
 
 // ─── Paise helpers ───────────────────────────────────────────────────────────
 
@@ -76,35 +76,44 @@ export function calculatePercentageSplit(
 // ─── Balance engine ──────────────────────────────────────────────────────────
 
 /**
- * Calculate net balance for each member from all expenses.
+ * Calculate net balance for each member from expenses and recorded settlements.
  * Positive = owed to you · Negative = you owe.
  * INVARIANT: sum of all balances === 0
+ *
+ * pendingEmails: invited members not yet signed in — their split shares are
+ * keyed by email in the splits map.
+ *
+ * settlements: recorded payments that reduce outstanding balances.
+ * A settlement { from, to, amount } means `from` paid `to` amount paise,
+ * so `from` gets a credit and `to` gets a debit of that amount.
  */
 export function calculateBalances(
   expenses: Expense[],
   memberUids: string[],
+  pendingEmails: string[] = [],
+  settlements: Settlement[] = [],
 ): Balance[] {
-  const credits: Record<string, number> = {}
-  const debits:  Record<string, number> = {}
+  const allKeys = [...memberUids, ...pendingEmails]
+  const net: Record<string, number> = {}
+  allKeys.forEach((key) => { net[key] = 0 })
 
-  memberUids.forEach((uid) => {
-    credits[uid] = 0
-    debits[uid]  = 0
-  })
-
+  // Apply expenses: payer gets credit, each split participant gets debited
   expenses
     .filter((e) => !e.isDeleted)
     .forEach((expense) => {
-      credits[expense.paidBy] = (credits[expense.paidBy] ?? 0) + expense.amount
-      Object.entries(expense.splits).forEach(([uid, share]) => {
-        debits[uid] = (debits[uid] ?? 0) + share
+      net[expense.paidBy] = (net[expense.paidBy] ?? 0) + expense.amount
+      Object.entries(expense.splits).forEach(([key, share]) => {
+        net[key] = (net[key] ?? 0) - share
       })
     })
 
-  const balances = memberUids.map((uid) => ({
-    uid,
-    net: (credits[uid] ?? 0) - (debits[uid] ?? 0),
-  }))
+  // Apply settlements: `from` paid `to`, so from's debt reduces, to's credit reduces
+  settlements.forEach((s) => {
+    net[s.from] = (net[s.from] ?? 0) + s.amount
+    net[s.to]   = (net[s.to]   ?? 0) - s.amount
+  })
+
+  const balances = allKeys.map((key) => ({ uid: key, net: net[key] ?? 0 }))
 
   const sum = balances.reduce((a, b) => a + b.net, 0)
   if (Math.abs(sum) > 1) {

@@ -12,13 +12,20 @@ export interface Group {
   name: string
   description?: string
   createdBy: string
-  members: string[]
+  members: string[]           // resolved UIDs
+  pendingInvites: string[]    // emails awaiting first sign-in
   startDate?: Date
   endDate?: Date
   status: 'active' | 'settled' | 'archived'
   totalSpend: number
   createdAt: Date
   coverColor: string
+}
+
+// Top-level /invites/{encodedEmail} — resolved on first sign-in
+export interface Invite {
+  email: string
+  groupIds: string[]
 }
 
 export interface Split {
@@ -65,7 +72,8 @@ export interface SettlementSuggestion {
 export interface CreateGroupInput {
   name: string
   description?: string
-  members: string[]
+  members: string[]        // resolved UIDs
+  pendingInvites: string[] // emails not yet in Firestore
   startDate?: Date
   endDate?: Date
   coverColor: string

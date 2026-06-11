@@ -11,7 +11,9 @@ import { Expense, User } from '@/types'
 import { formatINR } from '@/lib/calculations'
 import { UserAvatar } from '@/components/ui/UserAvatar'
 import { EXPENSE_CATEGORIES } from '@/constants'
-import { ArrowLeft, Trash2, Loader2 } from 'lucide-react'
+import { ArrowLeft, Trash2, Loader2, Mail } from 'lucide-react'
+
+function isPendingKey(key: string) { return key.includes('@') }
 import { toast } from 'sonner'
 
 function tsToDate(ts: unknown): Date {
@@ -54,11 +56,11 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
     })
   }, [id, eid])
 
-  // Fetch all split participants
+  // Fetch all split participants (skip email keys — they're pending invites, not UIDs)
   useEffect(() => {
     if (!expense) return
-    const uids = [expense.paidBy, ...Object.keys(expense.splits)]
-    const unique = [...new Set(uids)]
+    const keys = [expense.paidBy, ...Object.keys(expense.splits)]
+    const unique = [...new Set(keys)].filter((k) => !isPendingKey(k))
     unique.forEach(async (uid) => {
       if (userCache[uid]) return
       const u = await getUserById(uid)
@@ -79,9 +81,10 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
     }
   }
 
-  function name(uid: string) {
-    if (uid === user?.uid) return 'You'
-    return userCache[uid]?.displayName?.split(' ')[0] ?? '…'
+  function name(key: string) {
+    if (key === user?.uid)    return 'You'
+    if (isPendingKey(key))    return key.split('@')[0]
+    return userCache[key]?.displayName?.split(' ')[0] ?? '…'
   }
 
   if (!expense) {
@@ -137,17 +140,24 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
       <div>
         <p className="text-[#8E8E9A] text-xs uppercase tracking-wide mb-3">Split breakdown</p>
         <div className="space-y-2">
-          {Object.entries(expense.splits).map(([uid, share]) => (
-            <div key={uid} className="flex items-center gap-3 py-2.5 px-3 rounded-sm border border-[#2A2A32] bg-[#111113]">
-              {userCache[uid] ? (
-                <UserAvatar user={userCache[uid]} size={32} />
+          {Object.entries(expense.splits).map(([key, share]) => (
+            <div key={key} className="flex items-center gap-3 py-2.5 px-3 rounded-sm border border-[#2A2A32] bg-[#111113]">
+              {isPendingKey(key) ? (
+                <div className="w-8 h-8 rounded-full bg-[rgba(251,191,36,0.08)] border border-[rgba(251,191,36,0.2)] flex items-center justify-center shrink-0">
+                  <Mail size={14} className="text-warning" />
+                </div>
+              ) : userCache[key] ? (
+                <UserAvatar user={userCache[key]} size={32} />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-[#1A1A1F] animate-pulse" />
+                <div className="w-8 h-8 rounded-full bg-[#1A1A1F] animate-pulse shrink-0" />
               )}
-              <span className="flex-1 text-[#F2F2F7] text-sm">{name(uid)}</span>
+              <span className="flex-1 text-[#F2F2F7] text-sm">{name(key)}</span>
+              {isPendingKey(key) && (
+                <span className="text-warning text-[10px] font-medium mr-1">invited</span>
+              )}
               <span className="font-mono text-sm text-[#F2F2F7]">{formatINR(share)}</span>
               {expense.splitType === 'percentage' && (
-                <span className="font-mono text-xs text-[#4A4A56]">
+                <span className="font-mono text-xs text-faint">
                   {((share / expense.amount) * 100).toFixed(0)}%
                 </span>
               )}

@@ -195,15 +195,17 @@ function MockExpenseCard() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <p className="text-[#F2F2F7] font-medium text-sm">Jibhi Stay</p>
-          <p className="text-[#8E8E9A] text-xs mt-0.5">Paid by Sahil · 6 members</p>
+          <p className="text-[#8E8E9A] text-xs mt-0.5">
+            Paid by Rishab · 6 members
+          </p>
         </div>
         <span className="font-mono text-[#F2F2F7] font-medium">₹18,000</span>
       </div>
       <div className="space-y-2">
         {[
-          { name: 'Arun',   amount: '-₹3,000', color: 'text-[#F87171]' },
-          { name: 'Priya',  amount: '-₹3,000', color: 'text-[#F87171]' },
-          { name: 'Sahil',  amount: '+₹15,000', color: 'text-[#34D399]' },
+          { name: "Purvi", amount: "-₹3,000", color: "text-[#F87171]" },
+          { name: "Sahil", amount: "-₹3,000", color: "text-[#F87171]" },
+          { name: "Rishab", amount: "+₹15,000", color: "text-[#34D399]" },
         ].map((r) => (
           <div key={r.name} className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -212,10 +214,12 @@ function MockExpenseCard() {
               </div>
               <span className="text-[#8E8E9A] text-xs">{r.name}</span>
             </div>
-            <span className={`font-mono text-xs font-medium ${r.color}`}>{r.amount}</span>
+            <span className={`font-mono text-xs font-medium ${r.color}`}>
+              {r.amount}
+            </span>
           </div>
         ))}
       </div>
     </div>
-  )
+  );
 }

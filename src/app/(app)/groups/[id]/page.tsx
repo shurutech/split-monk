@@ -3,7 +3,7 @@
 import { use, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useGroup } from '@/hooks/useGroup'
-import { useExpenses } from '@/hooks/useExpenses'
+import { useExpenses, useSettlements } from '@/hooks/useExpenses'
 import { useAuthContext } from '@/components/auth/AuthProvider'
 import { calculateBalances, getOptimalSettlements, formatINR } from '@/lib/calculations'
 import { getAllUsers } from '@/lib/firestore'
@@ -12,8 +12,9 @@ import { ExpenseList } from '@/components/expenses/ExpenseList'
 import { BalancesTab } from '@/components/balances/BalancesTab'
 import { MemberList } from '@/components/groups/MemberList'
 import { SpendingAnalytics } from '@/components/groups/SpendingAnalytics'
+import { GroupSettingsSheet } from '@/components/groups/GroupSettingsSheet'
 import { GroupCardSkeleton } from '@/components/ui/LoadingSkeleton'
-import { ArrowLeft, Plus, Users, ReceiptText, Scale, BarChart2, Download } from 'lucide-react'
+import { ArrowLeft, Plus, Users, ReceiptText, Scale, BarChart2, Download, Settings } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 
@@ -24,10 +25,12 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   const { id }                    = use(params)
   const { user }                  = useAuthContext()
   const { group, loading }        = useGroup(id)
-  const { expenses, loading: expLoading } = useExpenses(id)
-  const [activeTab, setActiveTab] = useState<Tab>('expenses')
-  const [exporting, setExporting] = useState(false)
-  const router                    = useRouter()
+  const { expenses, loading: expLoading }             = useExpenses(id)
+  const { settlements: recordedSettlements }          = useSettlements(id)
+  const [activeTab,     setActiveTab]     = useState<Tab>('expenses')
+  const [exporting,     setExporting]     = useState(false)
+  const [settingsOpen,  setSettingsOpen]  = useState(false)
+  const router                            = useRouter()
 
   if (loading) {
     return (
@@ -47,8 +50,8 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
     )
   }
 
-  const balances    = expLoading ? [] : calculateBalances(expenses, group.members)
-  const settlements = balances.length ? getOptimalSettlements(balances) : []
+  const balances            = expLoading ? [] : calculateBalances(expenses, group.members, group.pendingInvites ?? [], recordedSettlements)
+  const settlementSuggestions = balances.length ? getOptimalSettlements(balances) : []
   const myBalance   = balances.find((b) => b.uid === user?.uid)
 
   async function handleExport() {
@@ -77,7 +80,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
             {group.name}
           </h1>
           {group.startDate && (
-            <p className="text-[#4A4A56] text-xs mt-0.5">
+            <p className="text-faint text-xs mt-0.5">
               {new Date(group.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
               {group.endDate ? ` – ${new Date(group.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
             </p>
@@ -92,6 +95,15 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
               title="Export CSV"
             >
               <Download size={15} />
+            </button>
+          )}
+          {group.createdBy === user?.uid && (
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="p-2 rounded-sm border border-[#2A2A32] text-[#8E8E9A] hover:text-[#F2F2F7] hover:border-faint transition-colors"
+              title="Trip settings"
+            >
+              <Settings size={15} />
             </button>
           )}
           {group.status === 'active' && (
@@ -150,7 +162,8 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
         <BalancesTab
           group={group}
           balances={balances}
-          settlements={settlements}
+          settlements={settlementSuggestions}
+          recordedSettlements={recordedSettlements}
           expenses={expenses}
           currentUid={user?.uid ?? ''}
         />
@@ -159,8 +172,16 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
         <SpendingAnalytics expenses={expenses} />
       )}
       {activeTab === 'members' && (
-        <MemberList memberUids={group.members} createdBy={group.createdBy} />
+        <MemberList memberUids={group.members} pendingInvites={group.pendingInvites ?? []} createdBy={group.createdBy} />
       )}
+
+      <GroupSettingsSheet
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        group={group}
+        expenses={expenses}
+        balances={balances}
+      />
     </div>
   )
 }
@@ -168,7 +189,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
 function StatCard({ label, value, valueClass = 'text-[#F2F2F7]' }: { label: string; value: string; valueClass?: string }) {
   return (
     <div className="rounded-sm border border-[#2A2A32] bg-[#111113] px-3 py-3">
-      <p className="text-[#4A4A56] text-[10px] uppercase tracking-wide mb-1">{label}</p>
+      <p className="text-faint text-[10px] uppercase tracking-wide mb-1">{label}</p>
       <p className={`font-mono text-sm font-medium ${valueClass}`}>{value}</p>
     </div>
   )

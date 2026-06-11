@@ -19,19 +19,20 @@ interface Props {
 export function ExpenseList({ expenses, loading, groupId, currentUid }: Props) {
   const [userCache, setUserCache] = useState<Record<string, User>>({})
 
-  // Fetch display names for all unique payers
+  // Fetch display names for unique payers — skip email keys (pending invites, no user doc)
   useEffect(() => {
-    const uids = [...new Set(expenses.map((e) => e.paidBy))]
-    uids.forEach(async (uid) => {
+    const keys = [...new Set(expenses.map((e) => e.paidBy))].filter((k) => !k.includes('@'))
+    keys.forEach(async (uid) => {
       if (userCache[uid]) return
       const u = await getUserById(uid)
       if (u) setUserCache((prev) => ({ ...prev, [uid]: u }))
     })
   }, [expenses])
 
-  function paidByName(uid: string) {
-    if (uid === currentUid) return 'You'
-    return userCache[uid]?.displayName?.split(' ')[0] ?? '…'
+  function paidByName(key: string) {
+    if (key === currentUid) return 'You'
+    if (key.includes('@'))  return key.split('@')[0]
+    return userCache[key]?.displayName?.split(' ')[0] ?? '…'
   }
 
   if (loading) {

@@ -49,7 +49,7 @@ export function GroupCard({ group, currentUid }: Props) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-[#8E8E9A] text-xs">
           <Users size={12} />
-          {group.members.length} members
+          {group.members.length + (group.pendingInvites?.length ?? 0)} members
         </div>
         <span className="font-mono text-[#8E8E9A] text-xs">
           {formatINR(group.totalSpend)}
