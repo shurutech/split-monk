@@ -61,6 +61,8 @@ export default function AddExpensePage({ params }: { params: Promise<{ id: strin
       const all = [...resolved, ...pending]
       setSplitMembers(all)
       setSelectedKeys(all.map((m) => m.key))
+      // Set paidBy to current user's uid as soon as members load (handles SSR null case)
+      setPaidBy((prev) => prev || user?.uid || (resolved[0]?.key ?? ''))
       const initAmt: Record<string, string> = {}
       const initPct: Record<string, string> = {}
       all.forEach((m) => { initAmt[m.key] = ''; initPct[m.key] = '' })
@@ -69,7 +71,7 @@ export default function AddExpensePage({ params }: { params: Promise<{ id: strin
     })
   }, [group])
 
-  useEffect(() => { if (user) setPaidBy(user.uid) }, [user])
+  useEffect(() => { if (user) setPaidBy((prev) => prev || user.uid) }, [user])
 
   const amountPaise     = toPaise(parseFloat(amountStr) || 0)
   const resolvedMembers = splitMembers.filter((m): m is ResolvedMember => m.type === 'resolved')
@@ -118,6 +120,7 @@ export default function AddExpensePage({ params }: { params: Promise<{ id: strin
     if (!amountPaise)               { toast.error('Amount is required'); return }
     if (amountPaise < MIN_EXPENSE_AMOUNT_PAISE) { toast.error('Minimum amount is ₹1'); return }
     if (amountPaise > MAX_EXPENSE_AMOUNT_PAISE) { toast.error('Maximum amount is ₹1,00,000'); return }
+    if (!paidBy)                    { toast.error('Select who paid'); return }
     if (selectedKeys.length < 2)    { toast.error('Select at least 2 people'); return }
     if (previewError)               { toast.error(previewError); return }
 
@@ -147,8 +150,9 @@ export default function AddExpensePage({ params }: { params: Promise<{ id: strin
       })
       toast.success('Expense added!')
       router.push(`/groups/${id}`)
-    } catch {
-      toast.error('Failed to add expense')
+    } catch (err) {
+      console.error('[addExpense]', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to add expense')
     } finally {
       setLoading(false)
     }
