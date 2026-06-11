@@ -53,7 +53,7 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
         updatedAt: tsToDate(d.updatedAt),
         isDeleted: d.isDeleted,
       })
-    })
+    }, () => {})  // swallow permission-denied during invite resolution
   }, [id, eid])
 
   // Fetch all split participants (skip email keys — they're pending invites, not UIDs)
@@ -183,7 +183,7 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
           className={`w-full flex items-center justify-center gap-2 py-3 rounded-sm text-sm font-medium border transition-colors ${
             confirmDel
               ? 'bg-[rgba(248,113,113,0.15)] border-[rgba(248,113,113,0.4)] text-[#F87171] hover:bg-[rgba(248,113,113,0.25)]'
-              : 'bg-transparent border-[#2A2A32] text-[#4A4A56] hover:border-[rgba(248,113,113,0.3)] hover:text-[#F87171]'
+              : 'bg-transparent border-[#2A2A32] text-faint hover:border-[rgba(248,113,113,0.3)] hover:text-[#F87171]'
           }`}
         >
           {deleting ? (

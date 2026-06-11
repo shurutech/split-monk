@@ -459,16 +459,18 @@ export async function softDeleteExpense(groupId: string, expenseId: string): Pro
 
 export function subscribeToExpenses(
   groupId: string,
-  cb: (expenses: Expense[]) => void,
+  cb:    (expenses: Expense[]) => void,
+  onErr: (err: Error) => void = () => {},
 ): Unsubscribe {
   const q = query(
     collection(db, `groups/${groupId}/expenses`),
     where('isDeleted', '==', false),
     orderBy('date', 'desc'),
   )
-  return onSnapshot(q, (snap) => {
-    cb(snap.docs.map((d) => docToExpense(d.id, d.data() as Record<string, unknown>)))
-  })
+  return onSnapshot(q,
+    (snap) => cb(snap.docs.map((d) => docToExpense(d.id, d.data() as Record<string, unknown>))),
+    (err)  => onErr(err),
+  )
 }
 
 // ─── Settlements ─────────────────────────────────────────────────────────────
@@ -526,15 +528,17 @@ export async function recordSettlement(
 
 export function subscribeToSettlements(
   groupId: string,
-  cb: (settlements: Settlement[]) => void,
+  cb:    (settlements: Settlement[]) => void,
+  onErr: (err: Error) => void = () => {},
 ): Unsubscribe {
   const q = query(
     collection(db, `groups/${groupId}/settlements`),
     orderBy('settledAt', 'desc'),
   )
-  return onSnapshot(q, (snap) => {
-    cb(snap.docs.map((d) => docToSettlement(d.id, d.data() as Record<string, unknown>)))
-  })
+  return onSnapshot(q,
+    (snap) => cb(snap.docs.map((d) => docToSettlement(d.id, d.data() as Record<string, unknown>))),
+    (err)  => onErr(err),
+  )
 }
 
 export async function getSettlements(groupId: string): Promise<Settlement[]> {

@@ -5,36 +5,39 @@ import { subscribeToExpenses, subscribeToSettlements } from '@/lib/firestore'
 import { calculateBalances } from '@/lib/calculations'
 import type { Expense, Settlement, Group } from '@/types'
 
-export function useExpenses(groupId: string | undefined) {
+// readyToSubscribe: pass false to defer subscription until membership is confirmed
+export function useExpenses(groupId: string | undefined, readyToSubscribe = true) {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading,  setLoading]  = useState(true)
 
   useEffect(() => {
-    if (!groupId) { setLoading(false); return }
+    if (!groupId || !readyToSubscribe) { setLoading(false); return }
     setLoading(true)
-    const unsub = subscribeToExpenses(groupId, (exps) => {
-      setExpenses(exps)
-      setLoading(false)
-    })
+    const unsub = subscribeToExpenses(
+      groupId,
+      (exps) => { setExpenses(exps); setLoading(false) },
+      ()     => { setLoading(false) },   // permission-denied — stay empty, don't crash
+    )
     return unsub
-  }, [groupId])
+  }, [groupId, readyToSubscribe])
 
   return { expenses, loading }
 }
 
-export function useSettlements(groupId: string | undefined) {
+export function useSettlements(groupId: string | undefined, readyToSubscribe = true) {
   const [settlements, setSettlements] = useState<Settlement[]>([])
   const [loading,     setLoading]     = useState(true)
 
   useEffect(() => {
-    if (!groupId) { setLoading(false); return }
+    if (!groupId || !readyToSubscribe) { setLoading(false); return }
     setLoading(true)
-    const unsub = subscribeToSettlements(groupId, (ss) => {
-      setSettlements(ss)
-      setLoading(false)
-    })
+    const unsub = subscribeToSettlements(
+      groupId,
+      (ss) => { setSettlements(ss); setLoading(false) },
+      ()   => { setLoading(false) },
+    )
     return unsub
-  }, [groupId])
+  }, [groupId, readyToSubscribe])
 
   return { settlements, loading }
 }
@@ -53,22 +56,34 @@ export function useNetBalance(uid: string | undefined, groups: Group[]) {
   useEffect(() => {
     if (!uid || groups.length === 0) { setLoading(false); return }
 
+    // Only subscribe to groups where user is a confirmed member.
+    // Pending invitees don't have subcollection read access, and there's a
+    // brief race window after sign-in before resolvePendingInvites completes.
+    const memberGroups = groups.filter((g) => g.members.includes(uid))
+    if (memberGroups.length === 0) { setLoading(false); return }
+
     setLoading(true)
     const unsubs: (() => void)[] = []
-
-    // Track how many groups have fired at least once
     const ready = new Set<string>()
+    const total = memberGroups.length * 2
 
-    groups.forEach((g) => {
+    memberGroups.forEach((g) => {
       const unsubExp = subscribeToExpenses(g.id, (exps) => {
         setExpMap((prev) => ({ ...prev, [g.id]: exps }))
         ready.add(`exp-${g.id}`)
-        if (ready.size === groups.length * 2) setLoading(false)
+        if (ready.size === total) setLoading(false)
+      }, () => {
+        // Permission denied during invite resolution window — skip silently
+        ready.add(`exp-${g.id}`)
+        if (ready.size === total) setLoading(false)
       })
       const unsubSett = subscribeToSettlements(g.id, (ss) => {
         setSettMap((prev) => ({ ...prev, [g.id]: ss }))
         ready.add(`sett-${g.id}`)
-        if (ready.size === groups.length * 2) setLoading(false)
+        if (ready.size === total) setLoading(false)
+      }, () => {
+        ready.add(`sett-${g.id}`)
+        if (ready.size === total) setLoading(false)
       })
       unsubs.push(unsubExp, unsubSett)
     })

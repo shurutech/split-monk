@@ -25,8 +25,13 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   const { id }                    = use(params)
   const { user }                  = useAuthContext()
   const { group, loading, error } = useGroup(id)
-  const { expenses, loading: expLoading }             = useExpenses(id)
-  const { settlements: recordedSettlements }          = useSettlements(id)
+  // Only subscribe to subcollections once we know the user is a confirmed member.
+  // If we subscribe while they're still a pendingInvitee (before resolvePendingInvites
+  // completes), the isMemberOrPending() rule fires a get() that may still see the old
+  // state and return permission-denied.
+  const isMember = !!(user && group?.members.includes(user.uid))
+  const { expenses, loading: expLoading }    = useExpenses(id, isMember)
+  const { settlements: recordedSettlements } = useSettlements(id, isMember)
   const [activeTab,     setActiveTab]     = useState<Tab>('expenses')
   const [exporting,     setExporting]     = useState(false)
   const [settingsOpen,  setSettingsOpen]  = useState(false)

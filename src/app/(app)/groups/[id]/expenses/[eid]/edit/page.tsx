@@ -76,7 +76,7 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
         updatedAt: tsToDate(d.updatedAt),
         isDeleted: d.isDeleted,
       })
-    })
+    }, () => {})  // swallow permission-denied during invite resolution
   }, [id, eid])
 
   // Load members list

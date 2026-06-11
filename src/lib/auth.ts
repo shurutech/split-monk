@@ -28,10 +28,12 @@ export async function signInWithGoogle() {
     await setDoc(userRef, { lastActiveAt: serverTimestamp() }, { merge: true })
   }
 
-  // Resolve any pending group invites for this email — fire-and-forget,
-  // failures here must not block sign-in.
+  // Resolve pending group invites synchronously before returning.
+  // The caller navigates to the dashboard after this — we must finish
+  // moving the user from pendingInvites → members before the dashboard
+  // query runs, otherwise the groups won't appear.
   if (user.email) {
-    resolvePendingInvites(user.uid, user.email).catch((err) => {
+    await resolvePendingInvites(user.uid, user.email).catch((err) => {
       console.error('[auth] resolvePendingInvites failed:', err)
     })
   }
