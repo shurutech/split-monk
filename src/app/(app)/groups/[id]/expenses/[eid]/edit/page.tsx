@@ -21,8 +21,12 @@ const SPLIT_TYPES = ['equal', 'exact', 'percentage'] as const
 type SplitType = typeof SPLIT_TYPES[number]
 
 const CAT_ICONS: Record<string, React.ReactNode> = {
-  food: <Utensils size={14} />, stay: <Hotel size={14} />, transport: <Car size={14} />,
-  activity: <Target size={14} />, shopping: <ShoppingBag size={14} />, other: <MoreHorizontal size={14} />,
+  food:      <Utensils size={16} />,
+  stay:      <Hotel size={16} />,
+  transport: <Car size={16} />,
+  activity:  <Target size={16} />,
+  shopping:  <ShoppingBag size={16} />,
+  other:     <MoreHorizontal size={16} />,
 }
 
 function tsToDate(ts: unknown): Date {
@@ -35,27 +39,26 @@ interface ResolvedMember { type: 'resolved'; user: User; key: string }
 type SplitMember = ResolvedMember | PendingMember
 
 export default function EditExpensePage({ params }: { params: Promise<{ id: string; eid: string }> }) {
-  const { id, eid }    = use(params)
-  const { user }       = useAuthContext()
-  const { group }      = useGroup(id)
-  const router         = useRouter()
+  const { id, eid }  = use(params)
+  const { user }     = useAuthContext()
+  const { group }    = useGroup(id)
+  const router       = useRouter()
 
-  const [expense,       setExpense]       = useState<Expense | null>(null)
-  const [splitMembers,  setSplitMembers]  = useState<SplitMember[]>([])
-  const [title,         setTitle]         = useState('')
-  const [amountStr,     setAmountStr]     = useState('')
-  const [paidBy,        setPaidBy]        = useState('')
-  const [splitType,     setSplitType]     = useState<SplitType>('equal')
-  const [selectedKeys,  setSelectedKeys]  = useState<string[]>([])
-  const [category,      setCategory]      = useState<Expense['category']>('other')
-  const [date,          setDate]          = useState('')
-  const [notes,         setNotes]         = useState('')
-  const [exactAmts,     setExactAmts]     = useState<Record<string, string>>({})
-  const [percentages,   setPercentages]   = useState<Record<string, string>>({})
-  const [loading,       setLoading]       = useState(false)
-  const [initialized,   setInitialized]   = useState(false)
+  const [expense,      setExpense]      = useState<Expense | null>(null)
+  const [splitMembers, setSplitMembers] = useState<SplitMember[]>([])
+  const [title,        setTitle]        = useState('')
+  const [amountStr,    setAmountStr]    = useState('')
+  const [paidBy,       setPaidBy]       = useState('')
+  const [splitType,    setSplitType]    = useState<SplitType>('equal')
+  const [selectedKeys, setSelectedKeys] = useState<string[]>([])
+  const [category,     setCategory]     = useState<Expense['category']>('other')
+  const [date,         setDate]         = useState('')
+  const [notes,        setNotes]        = useState('')
+  const [exactAmts,    setExactAmts]    = useState<Record<string, string>>({})
+  const [percentages,  setPercentages]  = useState<Record<string, string>>({})
+  const [loading,      setLoading]      = useState(false)
+  const [initialized,  setInitialized]  = useState(false)
 
-  // Subscribe to live expense doc
   useEffect(() => {
     const ref = doc(db, `groups/${id}/expenses`, eid)
     return onSnapshot(ref, (snap) => {
@@ -76,10 +79,9 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
         updatedAt: tsToDate(d.updatedAt),
         isDeleted: d.isDeleted,
       })
-    }, () => {})  // swallow permission-denied during invite resolution
+    }, () => {})
   }, [id, eid])
 
-  // Load members list
   useEffect(() => {
     if (!group) return
     getAllUsers().then((users) => {
@@ -92,7 +94,6 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
     })
   }, [group])
 
-  // Pre-fill form once both expense and members are loaded
   useEffect(() => {
     if (!expense || splitMembers.length === 0 || initialized) return
     setTitle(expense.title)
@@ -110,15 +111,14 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
       const share = expense.splits[m.key] ?? 0
       initAmt[m.key] = share > 0 ? (share / 100).toString() : ''
       initPct[m.key] = expense.splitType === 'percentage' && expense.amount > 0
-        ? ((share / expense.amount) * 100).toFixed(1)
-        : ''
+        ? ((share / expense.amount) * 100).toFixed(1) : ''
     })
     setExactAmts(initAmt)
     setPercentages(initPct)
     setInitialized(true)
   }, [expense, splitMembers, initialized])
 
-  const amountPaise = toPaise(parseFloat(amountStr) || 0)
+  const amountPaise     = toPaise(parseFloat(amountStr) || 0)
   const resolvedMembers = splitMembers.filter((m): m is ResolvedMember => m.type === 'resolved')
 
   function getSplitPreview(): { key: string; amount: number; error?: string }[] {
@@ -128,15 +128,15 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
       return selectedKeys.map((key) => ({ key, amount: splits[key] ?? 0 }))
     }
     if (splitType === 'exact') {
-      const splitInput: Record<string, number> = {}
-      selectedKeys.forEach((key) => { splitInput[key] = toPaise(parseFloat(exactAmts[key]) || 0) })
-      const { splits, error } = calculateExactSplit(amountPaise, splitInput)
+      const input: Record<string, number> = {}
+      selectedKeys.forEach((key) => { input[key] = toPaise(parseFloat(exactAmts[key]) || 0) })
+      const { splits, error } = calculateExactSplit(amountPaise, input)
       return selectedKeys.map((key) => ({ key, amount: splits[key] ?? 0, error: error ?? undefined }))
     }
     if (splitType === 'percentage') {
-      const pctInput: Record<string, number> = {}
-      selectedKeys.forEach((key) => { pctInput[key] = parseFloat(percentages[key]) || 0 })
-      const { splits, error } = calculatePercentageSplit(amountPaise, pctInput)
+      const input: Record<string, number> = {}
+      selectedKeys.forEach((key) => { input[key] = parseFloat(percentages[key]) || 0 })
+      const { splits, error } = calculatePercentageSplit(amountPaise, input)
       return selectedKeys.map((key) => ({ key, amount: splits[key] ?? 0, error: error ?? undefined }))
     }
     return []
@@ -147,10 +147,20 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
   const exactSum     = selectedKeys.reduce((a, key) => a + toPaise(parseFloat(exactAmts[key]) || 0), 0)
   const pctSum       = selectedKeys.reduce((a, key) => a + (parseFloat(percentages[key]) || 0), 0)
 
+  function memberDisplayName(m: SplitMember) {
+    if (m.type === 'pending') return m.email.split('@')[0]
+    return m.user.uid === user?.uid ? 'You' : m.user.displayName.split(' ')[0]
+  }
+
+  function toggleMember(key: string) {
+    setSelectedKeys((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    )
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!user || !group || !expense) return
-
     if (!title.trim())              { toast.error('Title is required'); return }
     if (!amountPaise)               { toast.error('Amount is required'); return }
     if (amountPaise < MIN_EXPENSE_AMOUNT_PAISE) { toast.error('Minimum amount is ₹1'); return }
@@ -178,14 +188,9 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
     setLoading(true)
     try {
       await updateExpense(id, eid, {
-        title:    title.trim(),
-        amount:   amountPaise,
-        paidBy,
-        splitType,
-        splits:   finalSplits,
-        date:     new Date(date),
-        notes:    notes.trim() || undefined,
-        category,
+        title: title.trim(), amount: amountPaise, paidBy, splitType,
+        splits: finalSplits, date: new Date(date),
+        notes: notes.trim() || undefined, category,
       })
       toast.success('Expense updated')
       router.push(`/groups/${id}/expenses/${eid}`)
@@ -194,12 +199,6 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
     } finally {
       setLoading(false)
     }
-  }
-
-  function toggleMember(key: string) {
-    setSelectedKeys((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
-    )
   }
 
   if (!expense || !initialized) {
@@ -212,7 +211,9 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
   }
 
   return (
-    <div className="max-w-lg mx-auto pb-10">
+    <div className="max-w-lg mx-auto pb-24">
+
+      {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <button onClick={() => router.back()} className="text-[#8E8E9A] hover:text-[#F2F2F7] transition-colors">
           <ArrowLeft size={20} />
@@ -222,9 +223,9 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
         </h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form id="edit-expense-form" onSubmit={handleSubmit} className="space-y-5">
 
-        {/* Amount */}
+        {/* ── Amount hero ─────────────────────────────────────────────────── */}
         <div className="text-center py-4">
           <label className="block text-faint text-xs uppercase tracking-wide mb-3">Amount (₹)</label>
           <div className="flex items-center justify-center gap-2">
@@ -236,13 +237,14 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
               placeholder="0"
               min="1"
               step="1"
+              autoFocus
               className="bg-transparent border-none outline-none text-[#F2F2F7] font-mono text-4xl font-bold w-36 sm:w-48 text-center placeholder-[#2A2A32]"
             />
           </div>
           <div className="mt-1 h-px bg-linear-to-r from-transparent via-[#7C6BF8] to-transparent" />
         </div>
 
-        {/* Title */}
+        {/* ── Title ───────────────────────────────────────────────────────── */}
         <div>
           <label className="block text-[#8E8E9A] text-xs font-medium mb-1.5">What for? *</label>
           <input
@@ -254,50 +256,67 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
           />
         </div>
 
-        {/* Paid by */}
-        <div>
-          <label className="block text-[#8E8E9A] text-xs font-medium mb-2">Paid by</label>
-          <div className="flex gap-2 flex-wrap">
-            {resolvedMembers.map(({ user: u }) => (
-              <button
-                key={u.uid}
-                type="button"
-                onClick={() => setPaidBy(u.uid)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                  paidBy === u.uid
-                    ? 'bg-[rgba(124,107,248,0.15)] border-[rgba(124,107,248,0.4)] text-[#7C6BF8]'
-                    : 'bg-[#1A1A1F] border-[#2A2A32] text-[#8E8E9A] hover:border-faint'
-                }`}
-              >
-                <UserAvatar user={u} size={20} />
-                {u.uid === user?.uid ? 'You' : u.displayName.split(' ')[0]}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Category */}
+        {/* ── Category — icon grid ─────────────────────────────────────────── */}
         <div>
           <label className="block text-[#8E8E9A] text-xs font-medium mb-2">Category</label>
-          <div className="flex gap-2 flex-wrap">
-            {EXPENSE_CATEGORIES.map((cat) => (
-              <button
-                key={cat.value}
-                type="button"
-                onClick={() => setCategory(cat.value as Expense['category'])}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs font-medium border transition-all ${
-                  category === cat.value
-                    ? 'bg-[rgba(124,107,248,0.15)] border-[rgba(124,107,248,0.4)] text-[#7C6BF8]'
-                    : 'bg-[#1A1A1F] border-[#2A2A32] text-[#8E8E9A] hover:border-faint'
-                }`}
-              >
-                {CAT_ICONS[cat.value]} {cat.label}
-              </button>
-            ))}
+          <div className="grid grid-cols-6 gap-2">
+            {EXPENSE_CATEGORIES.map((cat) => {
+              const selected = category === cat.value
+              return (
+                <button
+                  key={cat.value}
+                  type="button"
+                  onClick={() => setCategory(cat.value as Expense['category'])}
+                  title={cat.label}
+                  className={`flex flex-col items-center gap-1 py-2.5 rounded-sm border text-[10px] font-medium transition-all ${
+                    selected
+                      ? 'bg-[rgba(124,107,248,0.15)] border-[rgba(124,107,248,0.4)] text-[#7C6BF8]'
+                      : 'bg-[#1A1A1F] border-[#2A2A32] text-[#8E8E9A] hover:border-faint'
+                  }`}
+                >
+                  {CAT_ICONS[cat.value]}
+                  <span className="truncate w-full text-center">{cat.label}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
 
-        {/* Split type */}
+        {/* ── Paid by — scrollable row ─────────────────────────────────────── */}
+        <div>
+          <label className="block text-[#8E8E9A] text-xs font-medium mb-2">Paid by</label>
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {resolvedMembers.map(({ user: u }) => {
+              const selected = paidBy === u.uid
+              return (
+                <button
+                  key={u.uid}
+                  type="button"
+                  onClick={() => setPaidBy(u.uid)}
+                  className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-sm border shrink-0 transition-all ${
+                    selected
+                      ? 'bg-[rgba(124,107,248,0.15)] border-[rgba(124,107,248,0.4)]'
+                      : 'bg-[#1A1A1F] border-[#2A2A32] hover:border-faint'
+                  }`}
+                >
+                  <div className="relative">
+                    <UserAvatar user={u} size={32} />
+                    {selected && (
+                      <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-[#7C6BF8] rounded-full flex items-center justify-center">
+                        <Check size={8} className="text-white" strokeWidth={3} />
+                      </span>
+                    )}
+                  </div>
+                  <span className={`text-[10px] font-medium truncate max-w-14 ${selected ? 'text-[#7C6BF8]' : 'text-[#8E8E9A]'}`}>
+                    {u.uid === user?.uid ? 'You' : u.displayName.split(' ')[0]}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ── Split type ──────────────────────────────────────────────────── */}
         <div>
           <label className="block text-[#8E8E9A] text-xs font-medium mb-2">Split type</label>
           <div className="flex bg-[#111113] border border-[#2A2A32] rounded-sm p-1 gap-1">
@@ -316,103 +335,175 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
 
-        {/* Split among */}
+        {/* ── Split among ─────────────────────────────────────────────────── */}
         <div>
-          <label className="block text-[#8E8E9A] text-xs font-medium mb-2">
-            Split among ({selectedKeys.length})
-          </label>
-          <div className="space-y-px border border-[#2A2A32] rounded-sm overflow-hidden">
-            {splitMembers.map((member) => {
-              const key       = member.key
-              const selected  = selectedKeys.includes(key)
-              const isPending = member.type === 'pending'
-              const displayName = isPending
-                ? member.email.split('@')[0]
-                : (member.user.uid === user?.uid ? 'You' : member.user.displayName.split(' ')[0])
-
-              return (
-                <div
-                  key={key}
-                  className={`flex items-center gap-3 px-3 py-2.5 transition-colors ${selected ? 'bg-[#111113]' : 'bg-background opacity-40'}`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => toggleMember(key)}
-                    className={`w-5 h-5 rounded border shrink-0 flex items-center justify-center transition-colors ${
-                      selected ? 'bg-[#7C6BF8] border-[#7C6BF8]' : 'border-[#2A2A32]'
-                    }`}
-                  >
-                    {selected && <Check size={11} className="text-white" strokeWidth={3} />}
-                  </button>
-
-                  {isPending ? (
-                    <div className="w-7 h-7 rounded-full bg-[rgba(251,191,36,0.08)] border border-[rgba(251,191,36,0.2)] flex items-center justify-center shrink-0">
-                      <Mail size={13} className="text-[#FBBF24]" />
-                    </div>
-                  ) : (
-                    <UserAvatar user={member.user} size={28} />
-                  )}
-
-                  <span className="flex-1 text-[#F2F2F7] text-sm">{displayName}</span>
-
-                  {isPending && (
-                    <span className="text-[#FBBF24] text-[10px] font-medium mr-1 shrink-0">invited</span>
-                  )}
-
-                  {splitType === 'exact' && selected && (
-                    <div className="flex items-center gap-1">
-                      <span className="text-faint text-xs font-mono">₹</span>
-                      <input
-                        type="number"
-                        value={exactAmts[key] ?? ''}
-                        onChange={(e) => setExactAmts((prev) => ({ ...prev, [key]: e.target.value }))}
-                        placeholder="0"
-                        min="0"
-                        className="w-16 sm:w-20 bg-[#1A1A1F] border border-[#2A2A32] rounded px-2 py-1 text-[#F2F2F7] font-mono text-xs text-right focus:outline-none focus:border-[#7C6BF8] transition-all"
-                      />
-                    </div>
-                  )}
-
-                  {splitType === 'percentage' && selected && (
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        value={percentages[key] ?? ''}
-                        onChange={(e) => setPercentages((prev) => ({ ...prev, [key]: e.target.value }))}
-                        placeholder="0"
-                        min="0"
-                        max="100"
-                        className="w-16 bg-[#1A1A1F] border border-[#2A2A32] rounded px-2 py-1 text-[#F2F2F7] font-mono text-xs text-right focus:outline-none focus:border-[#7C6BF8] transition-all"
-                      />
-                      <span className="text-faint text-xs">%</span>
-                    </div>
-                  )}
-
-                  {splitType === 'equal' && selected && amountPaise > 0 && (
-                    <span className="font-mono text-[#8E8E9A] text-xs">
-                      {formatINR(calculateEqualSplit(amountPaise, selectedKeys, paidBy)[key] ?? 0)}
-                    </span>
-                  )}
-                </div>
-              )
-            })}
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-[#8E8E9A] text-xs font-medium">
+              Split among
+              <span className="ml-1.5 text-[#7C6BF8] font-semibold">{selectedKeys.length}</span>
+              <span className="text-faint">/{splitMembers.length}</span>
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedKeys(splitMembers.map((m) => m.key))}
+                className="text-[10px] text-[#7C6BF8] hover:underline"
+              >
+                All
+              </button>
+              <span className="text-faint text-[10px]">·</span>
+              <button
+                type="button"
+                onClick={() => setSelectedKeys([])}
+                className="text-[10px] text-[#8E8E9A] hover:text-[#F2F2F7]"
+              >
+                None
+              </button>
+            </div>
           </div>
 
-          {splitType === 'exact' && amountPaise > 0 && (
-            <div className={`flex justify-between mt-2 px-1 text-xs font-mono ${exactSum === amountPaise ? 'text-success' : 'text-[#F87171]'}`}>
-              <span>Total entered</span>
-              <span>{formatINR(exactSum)} / {formatINR(amountPaise)}</span>
+          {/* Equal split: chip grid */}
+          {splitType === 'equal' && (
+            <div className="flex flex-wrap gap-2">
+              {splitMembers.map((member) => {
+                const key      = member.key
+                const selected = selectedKeys.includes(key)
+                const isPending = member.type === 'pending'
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => toggleMember(key)}
+                    className={`flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full border text-xs font-medium transition-all ${
+                      selected
+                        ? 'bg-accent-dim border-[rgba(124,107,248,0.35)] text-[#F2F2F7]'
+                        : 'bg-[#111113] border-[#2A2A32] text-faint'
+                    }`}
+                  >
+                    <span className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-all ${
+                      selected ? 'bg-[#7C6BF8] border-[#7C6BF8]' : 'border-[#2A2A32]'
+                    }`}>
+                      {selected && <Check size={9} className="text-white" strokeWidth={3} />}
+                    </span>
+
+                    {isPending ? (
+                      <div className="w-5 h-5 rounded-full bg-[rgba(251,191,36,0.1)] border border-[rgba(251,191,36,0.2)] flex items-center justify-center shrink-0">
+                        <Mail size={10} className="text-warning" />
+                      </div>
+                    ) : (
+                      <UserAvatar user={member.user} size={20} />
+                    )}
+
+                    <span className="truncate max-w-20">{memberDisplayName(member)}</span>
+
+                    {selected && amountPaise > 0 && (
+                      <span className="text-[#7C6BF8] font-mono text-[10px] ml-0.5">
+                        {formatINR(calculateEqualSplit(amountPaise, selectedKeys, paidBy)[key] ?? 0)}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           )}
-          {splitType === 'percentage' && (
-            <div className={`flex justify-between mt-2 px-1 text-xs font-mono ${Math.abs(pctSum - 100) < 0.01 ? 'text-success' : 'text-[#F87171]'}`}>
-              <span>Total %</span>
-              <span>{pctSum.toFixed(1)}% / 100%</span>
+
+          {/* Exact / percentage: scrollable list */}
+          {(splitType === 'exact' || splitType === 'percentage') && (
+            <div className="border border-[#2A2A32] rounded-sm overflow-hidden">
+              <div className="overflow-y-auto max-h-72">
+                {splitMembers.map((member) => {
+                  const key       = member.key
+                  const selected  = selectedKeys.includes(key)
+                  const isPending = member.type === 'pending'
+                  return (
+                    <div
+                      key={key}
+                      className={`flex items-center gap-3 px-3 py-2.5 border-b border-[#1A1A1F] last:border-0 transition-colors ${
+                        selected ? 'bg-[#111113]' : 'bg-background opacity-50'
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleMember(key)}
+                        className={`w-5 h-5 rounded border shrink-0 flex items-center justify-center transition-colors ${
+                          selected ? 'bg-[#7C6BF8] border-[#7C6BF8]' : 'border-[#2A2A32]'
+                        }`}
+                      >
+                        {selected && <Check size={11} className="text-white" strokeWidth={3} />}
+                      </button>
+
+                      {isPending ? (
+                        <div className="w-7 h-7 rounded-full bg-[rgba(251,191,36,0.08)] border border-[rgba(251,191,36,0.2)] flex items-center justify-center shrink-0">
+                          <Mail size={13} className="text-warning" />
+                        </div>
+                      ) : (
+                        <UserAvatar user={member.user} size={28} />
+                      )}
+
+                      <span className="flex-1 text-[#F2F2F7] text-sm truncate">{memberDisplayName(member)}</span>
+
+                      {isPending && (
+                        <span className="text-warning text-[10px] font-medium shrink-0">invited</span>
+                      )}
+
+                      {splitType === 'exact' && selected && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="text-faint text-xs font-mono">₹</span>
+                          <input
+                            type="number"
+                            value={exactAmts[key] ?? ''}
+                            onChange={(e) => setExactAmts((prev) => ({ ...prev, [key]: e.target.value }))}
+                            placeholder="0"
+                            min="0"
+                            className="w-16 sm:w-20 bg-[#1A1A1F] border border-[#2A2A32] rounded px-2 py-1 text-[#F2F2F7] font-mono text-xs text-right focus:outline-none focus:border-[#7C6BF8] transition-all"
+                          />
+                        </div>
+                      )}
+
+                      {splitType === 'percentage' && selected && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <input
+                            type="number"
+                            value={percentages[key] ?? ''}
+                            onChange={(e) => setPercentages((prev) => ({ ...prev, [key]: e.target.value }))}
+                            placeholder="0"
+                            min="0"
+                            max="100"
+                            className="w-16 bg-[#1A1A1F] border border-[#2A2A32] rounded px-2 py-1 text-[#F2F2F7] font-mono text-xs text-right focus:outline-none focus:border-[#7C6BF8] transition-all"
+                          />
+                          <span className="text-faint text-xs">%</span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              {splitType === 'exact' && amountPaise > 0 && (
+                <div className={`flex justify-between px-3 py-2 text-xs font-mono border-t ${
+                  exactSum === amountPaise
+                    ? 'border-[rgba(52,211,153,0.2)] bg-[rgba(52,211,153,0.05)] text-success'
+                    : 'border-[rgba(248,113,113,0.2)] bg-[rgba(248,113,113,0.05)] text-[#F87171]'
+                }`}>
+                  <span>Total entered</span>
+                  <span>{formatINR(exactSum)} / {formatINR(amountPaise)}</span>
+                </div>
+              )}
+              {splitType === 'percentage' && (
+                <div className={`flex justify-between px-3 py-2 text-xs font-mono border-t ${
+                  Math.abs(pctSum - 100) < 0.01
+                    ? 'border-[rgba(52,211,153,0.2)] bg-[rgba(52,211,153,0.05)] text-success'
+                    : 'border-[rgba(248,113,113,0.2)] bg-[rgba(248,113,113,0.05)] text-[#F87171]'
+                }`}>
+                  <span>Total %</span>
+                  <span>{pctSum.toFixed(1)}% / 100%</span>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Date */}
+        {/* ── Date ────────────────────────────────────────────────────────── */}
         <div>
           <label className="block text-[#8E8E9A] text-xs font-medium mb-1.5">Date</label>
           <input
@@ -423,7 +514,7 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
           />
         </div>
 
-        {/* Notes */}
+        {/* ── Notes ───────────────────────────────────────────────────────── */}
         <div>
           <label className="block text-[#8E8E9A] text-xs font-medium mb-1.5">Notes (optional)</label>
           <textarea
@@ -436,14 +527,25 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
           />
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full flex items-center justify-center gap-2 bg-[#7C6BF8] text-white rounded-sm py-3 text-sm font-medium hover:bg-[#6B5CE7] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-        >
-          {loading ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : 'Save changes'}
-        </button>
       </form>
+
+      {/* ── Sticky submit bar ───────────────────────────────────────────── */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-background/90 backdrop-blur-md border-t border-[#2A2A32] px-4 py-3 md:relative md:border-0 md:bg-transparent md:backdrop-blur-none md:px-0 md:py-0 md:mt-5">
+        <div className="max-w-lg mx-auto flex items-center gap-3">
+          {previewError && (
+            <p className="flex-1 text-[#F87171] text-xs truncate">{previewError}</p>
+          )}
+          <button
+            form="edit-expense-form"
+            type="submit"
+            disabled={loading}
+            className="ml-auto flex items-center gap-2 bg-[#7C6BF8] text-white rounded-sm px-6 py-3 text-sm font-medium hover:bg-[#6B5CE7] disabled:opacity-60 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+          >
+            {loading ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : 'Save changes'}
+          </button>
+        </div>
+      </div>
+
     </div>
   )
 }
