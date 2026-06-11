@@ -52,6 +52,7 @@ function docToUser(id: string, data: Record<string, unknown>): User {
     email:        data.email as string,
     displayName:  data.displayName as string,
     photoURL:     data.photoURL as string,
+    upiId:        data.upiId as string | undefined,
     createdAt:    tsToDate(data.createdAt),
     lastActiveAt: tsToDate(data.lastActiveAt),
   }
@@ -115,6 +116,10 @@ export async function getUserById(uid: string): Promise<User | null> {
   const snap = await getDoc(doc(db, 'users', uid))
   if (!snap.exists()) return null
   return docToUser(snap.id, snap.data() as Record<string, unknown>)
+}
+
+export async function updateUserUPI(uid: string, upiId: string): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), { upiId: upiId.trim() || deleteField() })
 }
 
 export async function getUserByEmail(email: string): Promise<User | null> {

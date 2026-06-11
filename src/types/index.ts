@@ -3,6 +3,7 @@ export interface User {
   email: string
   displayName: string
   photoURL: string
+  upiId?: string
   createdAt: Date
   lastActiveAt: Date
 }

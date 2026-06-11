@@ -6,6 +6,7 @@ import { useAuthContext } from '@/components/auth/AuthProvider'
 import { Navbar } from '@/components/layout/Navbar'
 import { BottomNav } from '@/components/layout/BottomNav'
 import { PWAInstallPrompt } from '@/components/ui/PWAInstallPrompt'
+import { UPIPrompt } from '@/components/ui/UPIPrompt'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuthContext()
@@ -37,6 +38,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </main>
       <BottomNav />
       <PWAInstallPrompt />
+      <UPIPrompt />
     </div>
   )
 }

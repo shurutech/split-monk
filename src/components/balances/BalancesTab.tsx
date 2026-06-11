@@ -5,7 +5,7 @@ import { Balance, Expense, Group, Settlement, SettlementSuggestion, User } from 
 import { formatINR } from '@/lib/calculations'
 import { getUserById, recordSettlement } from '@/lib/firestore'
 import { UserAvatar } from '@/components/ui/UserAvatar'
-import { ArrowRight, CheckCircle2, Loader2, Mail, History } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Loader2, Mail, History, Smartphone } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Props {
@@ -19,18 +19,30 @@ interface Props {
 
 function isPendingKey(key: string) { return key.includes('@') }
 
+function buildUpiLink(upiId: string, amount: number, toName: string, groupName: string) {
+  const rupees = (amount / 100).toFixed(2)
+  const note   = encodeURIComponent(`SplitMonk · ${groupName}`)
+  const pn     = encodeURIComponent(toName)
+  return `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${pn}&am=${rupees}&cu=INR&tn=${note}`
+}
+
 export function BalancesTab({ group, balances, settlements, recordedSettlements, expenses, currentUid }: Props) {
   const [userCache, setUserCache] = useState<Record<string, User>>({})
   const [settling,  setSettling]  = useState<string | null>(null)
   const [noteInput, setNoteInput] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    group.members.forEach(async (uid) => {
-      if (userCache[uid]) return
+    // Fetch profiles for all members + any "to" UIDs in settlements
+    const toFetch = new Set<string>([
+      ...group.members,
+      ...settlements.map((s) => s.to),
+    ])
+    toFetch.forEach(async (uid) => {
+      if (userCache[uid] || isPendingKey(uid)) return
       const u = await getUserById(uid)
       if (u) setUserCache((prev) => ({ ...prev, [uid]: u }))
     })
-  }, [group.members])
+  }, [group.members, settlements])
 
   const myBalance  = balances.find((b) => b.uid === currentUid)
   const allSettled = balances.every((b) => b.net === 0)
@@ -79,6 +91,16 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
     }
   }
 
+  function handlePayUPI(s: SettlementSuggestion) {
+    const receiver = userCache[s.to]
+    if (!receiver?.upiId) return
+    const link = buildUpiLink(receiver.upiId, s.amount, receiver.displayName, group.name)
+    window.open(link, '_blank')
+    // Pre-fill the note so they just hit "Mark settled" after paying
+    const key = `${s.from}-${s.to}`
+    setNoteInput((prev) => ({ ...prev, [key]: prev[key] || 'UPI' }))
+  }
+
   return (
     <div className="space-y-6">
 
@@ -117,11 +139,14 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
           <h3 className="text-[#8E8E9A] text-xs uppercase tracking-wide mb-3">Suggested settlements</h3>
           <div className="space-y-3">
             {settlements.map((s) => {
-              const key       = `${s.from}-${s.to}`
-              const isLoading = settling === key
+              const key        = `${s.from}-${s.to}`
+              const isLoading  = settling === key
+              const isMyPayment = s.from === currentUid
+              const receiverUpi = !isPendingKey(s.to) ? userCache[s.to]?.upiId : undefined
+
               return (
                 <div key={key} className="rounded-md border border-[#2A2A32] bg-[#111113] p-4">
-                  {/* From → amount → to row */}
+                  {/* From → amount → to */}
                   <div className="flex items-center gap-2 mb-3 min-w-0">
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
                       {avatar(s.from, 28)}
@@ -138,22 +163,35 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
                     </div>
                   </div>
 
-                  {(s.from === currentUid || s.to === currentUid) && (
-                    <div className="flex gap-2">
-                      <input
-                        value={noteInput[key] ?? ''}
-                        onChange={(e) => setNoteInput((prev) => ({ ...prev, [key]: e.target.value }))}
-                        placeholder="Note: GPay, cash…"
-                        className="flex-1 min-w-0 bg-[#1A1A1F] border border-[#2A2A32] rounded-sm px-3 py-1.5 text-[#F2F2F7] text-xs placeholder-faint focus:outline-none focus:border-[#7C6BF8] transition-all"
-                      />
-                      <button
-                        onClick={() => handleSettle(s)}
-                        disabled={!!settling}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-success-dim text-success text-xs font-medium border border-[rgba(52,211,153,0.25)] hover:bg-[rgba(52,211,153,0.2)] disabled:opacity-50 transition-colors shrink-0 whitespace-nowrap"
-                      >
-                        {isLoading ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
-                        Mark settled
-                      </button>
+                  {(isMyPayment || s.to === currentUid) && (
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          value={noteInput[key] ?? ''}
+                          onChange={(e) => setNoteInput((prev) => ({ ...prev, [key]: e.target.value }))}
+                          placeholder="Note: GPay, cash…"
+                          className="flex-1 min-w-0 bg-[#1A1A1F] border border-[#2A2A32] rounded-sm px-3 py-1.5 text-[#F2F2F7] text-xs placeholder-faint focus:outline-none focus:border-[#7C6BF8] transition-all"
+                        />
+                        <button
+                          onClick={() => handleSettle(s)}
+                          disabled={!!settling}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-success-dim text-success text-xs font-medium border border-[rgba(52,211,153,0.25)] hover:bg-[rgba(52,211,153,0.2)] disabled:opacity-50 transition-colors shrink-0 whitespace-nowrap"
+                        >
+                          {isLoading ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
+                          Mark settled
+                        </button>
+                      </div>
+
+                      {/* Pay via UPI — only shown to payer when receiver has a UPI ID */}
+                      {isMyPayment && receiverUpi && (
+                        <button
+                          onClick={() => handlePayUPI(s)}
+                          className="w-full flex items-center justify-center gap-2 py-2 rounded-sm border border-[rgba(124,107,248,0.3)] bg-[rgba(124,107,248,0.08)] text-[#7C6BF8] text-xs font-medium hover:bg-[rgba(124,107,248,0.14)] transition-colors"
+                        >
+                          <Smartphone size={13} />
+                          Pay {formatINR(s.amount)} via UPI
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
