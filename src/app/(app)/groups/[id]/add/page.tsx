@@ -121,7 +121,7 @@ export default function AddExpensePage({ params }: { params: Promise<{ id: strin
     if (amountPaise < MIN_EXPENSE_AMOUNT_PAISE) { toast.error('Minimum amount is ₹1'); return }
     if (amountPaise > MAX_EXPENSE_AMOUNT_PAISE) { toast.error('Maximum amount is ₹1,00,000'); return }
     if (!paidBy)                    { toast.error('Select who paid'); return }
-    if (selectedKeys.length < 2)    { toast.error('Select at least 2 people'); return }
+    if (selectedKeys.length < 1)    { toast.error('Select at least 1 person to split with'); return }
     if (previewError)               { toast.error(previewError); return }
 
     let finalSplits: Record<string, number> = {}
