@@ -1,13 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Expense, User } from '@/types'
 import { getUserById } from '@/lib/firestore'
+import { formatINR } from '@/lib/calculations'
 import { ExpenseCard } from './ExpenseCard'
 import { ExpenseCardSkeleton } from '@/components/ui/LoadingSkeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ReceiptText } from 'lucide-react'
 import Link from 'next/link'
+
+type Filter = 'all' | 'mine'
 
 interface Props {
   expenses: Expense[]
@@ -18,6 +21,7 @@ interface Props {
 
 export function ExpenseList({ expenses, loading, groupId, currentUid }: Props) {
   const [userCache, setUserCache] = useState<Record<string, User>>({})
+  const [filter,    setFilter]    = useState<Filter>('all')
 
   // Fetch display names for unique payers — skip email keys (pending invites, no user doc)
   useEffect(() => {
@@ -34,6 +38,22 @@ export function ExpenseList({ expenses, loading, groupId, currentUid }: Props) {
     if (key.includes('@'))  return key.split('@')[0]
     return userCache[key]?.displayName?.split(' ')[0] ?? '…'
   }
+
+  // "Mine" = expenses where I paid OR I have a split share
+  const filtered = useMemo(() => {
+    if (filter === 'all') return expenses
+    return expenses.filter(
+      (e) => e.paidBy === currentUid || (e.splits[currentUid] ?? 0) > 0,
+    )
+  }, [expenses, filter, currentUid])
+
+  // My total spend (what I actually paid out) and net share (what I'm responsible for)
+  const myStats = useMemo(() => {
+    if (filter !== 'mine') return null
+    const iPaid    = filtered.filter((e) => e.paidBy === currentUid).reduce((s, e) => s + e.amount, 0)
+    const myShare  = filtered.reduce((s, e) => s + (e.splits[currentUid] ?? 0), 0)
+    return { iPaid, myShare }
+  }, [filtered, filter, currentUid])
 
   if (loading) {
     return (
@@ -62,29 +82,83 @@ export function ExpenseList({ expenses, loading, groupId, currentUid }: Props) {
   }
 
   // Group by date header
-  const grouped: { label: string; items: Expense[] }[] = []
-  let lastLabel = ''
-  expenses.forEach((exp) => {
-    const d     = new Date(exp.date)
-    const today = new Date()
-    const yest  = new Date(); yest.setDate(today.getDate() - 1)
-    let label: string
-    if (d.toDateString() === today.toDateString())     label = 'Today'
-    else if (d.toDateString() === yest.toDateString()) label = 'Yesterday'
-    else label = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long' })
+  function groupByDate(list: Expense[]) {
+    const groups: { label: string; items: Expense[] }[] = []
+    let lastLabel = ''
+    list.forEach((exp) => {
+      const d     = new Date(exp.date)
+      const today = new Date()
+      const yest  = new Date(); yest.setDate(today.getDate() - 1)
+      let label: string
+      if (d.toDateString() === today.toDateString())     label = 'Today'
+      else if (d.toDateString() === yest.toDateString()) label = 'Yesterday'
+      else label = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long' })
 
-    if (label !== lastLabel) {
-      grouped.push({ label, items: [] })
-      lastLabel = label
-    }
-    grouped[grouped.length - 1].items.push(exp)
-  })
+      if (label !== lastLabel) {
+        groups.push({ label, items: [] })
+        lastLabel = label
+      }
+      groups[groups.length - 1].items.push(exp)
+    })
+    return groups
+  }
+
+  const grouped = groupByDate(filtered)
 
   return (
     <div className="space-y-4">
+      {/* Filter toggle */}
+      <div className="flex items-center gap-2">
+        <div className="flex gap-1 bg-[#111113] border border-[#2A2A32] rounded-sm p-0.5">
+          {(['all', 'mine'] as Filter[]).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3 py-1.5 rounded text-xs font-medium transition-all duration-150 ${
+                filter === f
+                  ? 'bg-[#7C6BF8] text-white'
+                  : 'text-[#8E8E9A] hover:text-[#F2F2F7]'
+              }`}
+            >
+              {f === 'all' ? 'All expenses' : 'My expenses'}
+            </button>
+          ))}
+        </div>
+        {filter === 'all' && (
+          <span className="text-faint text-xs">{expenses.length} total</span>
+        )}
+      </div>
+
+      {/* My stats strip */}
+      {myStats && (
+        <div className="flex gap-2">
+          <div className="flex-1 rounded-sm border border-[#2A2A32] bg-[#111113] px-3 py-2.5">
+            <p className="text-faint text-[10px] uppercase tracking-wide mb-0.5">I paid</p>
+            <p className="font-mono text-sm font-medium text-[#F2F2F7]">{formatINR(myStats.iPaid)}</p>
+          </div>
+          <div className="flex-1 rounded-sm border border-[#2A2A32] bg-[#111113] px-3 py-2.5">
+            <p className="text-faint text-[10px] uppercase tracking-wide mb-0.5">My share</p>
+            <p className="font-mono text-sm font-medium text-[#F2F2F7]">{formatINR(myStats.myShare)}</p>
+          </div>
+          <div className="flex-1 rounded-sm border border-[#2A2A32] bg-[#111113] px-3 py-2.5">
+            <p className="text-faint text-[10px] uppercase tracking-wide mb-0.5">Expenses</p>
+            <p className="font-mono text-sm font-medium text-[#F2F2F7]">{filtered.length}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Empty mine state */}
+      {filtered.length === 0 && filter === 'mine' && (
+        <EmptyState
+          icon={<ReceiptText size={22} />}
+          title="Not in any expenses"
+          description="You haven't been added to any expenses yet."
+        />
+      )}
+
       {grouped.map(({ label, items }) => (
         <div key={label}>
-          <p className="text-[#4A4A56] text-xs uppercase tracking-wide mb-1 px-1">{label}</p>
+          <p className="text-faint text-xs uppercase tracking-wide mb-1 px-1">{label}</p>
           {items.map((exp) => (
             <ExpenseCard
               key={exp.id}
