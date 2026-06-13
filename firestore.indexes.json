@@ -12,8 +12,9 @@
       "collectionGroup": "expenses",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "isDeleted", "order": "ASCENDING" },
-        { "fieldPath": "date",      "order": "DESCENDING" }
+        { "fieldPath": "isDeleted",  "order": "ASCENDING" },
+        { "fieldPath": "date",       "order": "DESCENDING" },
+        { "fieldPath": "createdAt",  "order": "DESCENDING" }
       ]
     }
   ],

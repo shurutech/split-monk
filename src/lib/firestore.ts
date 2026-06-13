@@ -472,6 +472,7 @@ export function subscribeToExpenses(
     collection(db, `groups/${groupId}/expenses`),
     where('isDeleted', '==', false),
     orderBy('date', 'desc'),
+    orderBy('createdAt', 'desc'),
   )
   return onSnapshot(q,
     (snap) => cb(snap.docs.map((d) => docToExpense(d.id, d.data() as Record<string, unknown>))),
