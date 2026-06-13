@@ -113,6 +113,12 @@ export function calculateBalances(
     net[s.to]   = (net[s.to]   ?? 0) - s.amount
   })
 
+  // Include any key that accumulated a non-zero balance but wasn't in allKeys
+  // (e.g. a paidBy uid that was later removed from members, or a stale email key)
+  Object.keys(net).forEach((key) => {
+    if (!allKeys.includes(key)) allKeys.push(key)
+  })
+
   const balances = allKeys.map((key) => ({ uid: key, net: net[key] ?? 0 }))
 
   const sum = balances.reduce((a, b) => a + b.net, 0)
