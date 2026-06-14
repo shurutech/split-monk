@@ -5,7 +5,7 @@ import { Balance, Expense, Group, Settlement, SettlementSuggestion, User } from 
 import { formatINR } from '@/lib/calculations'
 import { getUserById, recordSettlement } from '@/lib/firestore'
 import { UserAvatar } from '@/components/ui/UserAvatar'
-import { ArrowRight, CheckCircle2, Loader2, Mail, History, Smartphone, ChevronDown, ChevronUp } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Loader2, Mail, History, Smartphone, ChevronDown, ChevronUp, Copy } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Props {
@@ -32,6 +32,7 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
   const [noteInput,      setNoteInput]      = useState<Record<string, string>>({})
   const [breakdownOpen,      setBreakdownOpen]      = useState(false)
   const [expandedPaidBy,     setExpandedPaidBy]     = useState<string | null>(null)
+  const [copiedUpi,          setCopiedUpi]          = useState<string | null>(null)
 
   useEffect(() => {
     const toFetch = new Set<string>([
@@ -302,13 +303,26 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
                       </div>
 
                       {isMyPayment && receiverUpi && (
-                        <button
-                          onClick={() => handlePayUPI(s)}
-                          className="w-full flex items-center justify-center gap-2 py-2 rounded-sm border border-[rgba(124,107,248,0.3)] bg-[rgba(124,107,248,0.08)] text-[#7C6BF8] text-xs font-medium hover:bg-[rgba(124,107,248,0.14)] transition-colors"
-                        >
-                          <Smartphone size={13} />
-                          Pay {formatINR(s.amount)} via UPI
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handlePayUPI(s)}
+                            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-sm border border-[rgba(124,107,248,0.3)] bg-[rgba(124,107,248,0.08)] text-[#7C6BF8] text-xs font-medium hover:bg-[rgba(124,107,248,0.14)] transition-colors"
+                          >
+                            <Smartphone size={13} />
+                            Pay via UPI
+                          </button>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(receiverUpi)
+                              setCopiedUpi(key)
+                              setTimeout(() => setCopiedUpi(null), 1500)
+                            }}
+                            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-sm border border-[#2A2A32] bg-[#1A1A1F] text-[#8E8E9A] hover:text-[#F2F2F7] hover:border-faint text-xs font-medium transition-colors shrink-0 whitespace-nowrap"
+                          >
+                            {copiedUpi === key ? <CheckCircle2 size={12} className="text-success" /> : <Copy size={12} />}
+                            {copiedUpi === key ? 'Copied!' : 'Copy UPI ID'}
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}
