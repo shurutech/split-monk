@@ -166,50 +166,59 @@ export async function createGroup(data: CreateGroupInput & { createdBy: string }
 export async function resolvePendingInvites(uid: string, email: string): Promise<void> {
   const inviteRef  = doc(db, 'invites', encodeEmail(email))
   const inviteSnap = await getDoc(inviteRef)
-  if (!inviteSnap.exists()) return
 
-  const invite = inviteSnap.data() as Invite
-  if (!invite.groupIds?.length) {
-    await runTransaction(db, async (tx) => { tx.delete(inviteRef) })
-    return
+  // Collect group IDs to scan for stale email split keys (Phase 2)
+  let groupIdsToScan: string[] = []
+
+  if (inviteSnap.exists()) {
+    const invite = inviteSnap.data() as Invite
+
+    if (!invite.groupIds?.length) {
+      await runTransaction(db, async (tx) => { tx.delete(inviteRef) })
+    } else {
+      groupIdsToScan = invite.groupIds
+
+      // Phase 1: membership transaction — move email → uid in group docs, delete invite
+      await runTransaction(db, async (tx) => {
+        const freshInvite = await tx.get(inviteRef)
+        if (!freshInvite.exists()) return
+
+        const groupIds = (freshInvite.data() as Invite).groupIds ?? []
+
+        for (const groupId of groupIds) {
+          const groupRef  = doc(db, 'groups', groupId)
+          const groupSnap = await tx.get(groupRef)
+          if (!groupSnap.exists()) continue
+
+          const groupData = groupSnap.data() as Record<string, unknown>
+          const members   = (groupData.members       as string[]) ?? []
+          const pending   = (groupData.pendingInvites as string[]) ?? []
+
+          if (!pending.includes(email)) continue
+
+          tx.update(groupRef, {
+            members:        [...members, uid],
+            pendingInvites: pending.filter((e) => e !== email),
+          })
+        }
+
+        tx.delete(inviteRef)
+      })
+    }
   }
 
-  // Collect which groupIds actually had this email pending (for phase 2)
-  const resolvedGroupIds: string[] = []
+  // Phase 2: scan ALL groups this user is a member of for stale email split keys.
+  // This covers: (a) groups from the invite doc, and (b) groups where the user was
+  // added to a split by email without a formal invite (orphan key scenario).
+  const memberGroupsSnap = await getDocs(
+    query(collection(db, 'groups'), where('members', 'array-contains', uid))
+  )
+  const allGroupIds = [...new Set([
+    ...groupIdsToScan,
+    ...memberGroupsSnap.docs.map((d) => d.id),
+  ])]
 
-  // Phase 1: membership transaction
-  await runTransaction(db, async (tx) => {
-    const freshInvite = await tx.get(inviteRef)
-    if (!freshInvite.exists()) return
-
-    const groupIds = (freshInvite.data() as Invite).groupIds ?? []
-
-    for (const groupId of groupIds) {
-      const groupRef  = doc(db, 'groups', groupId)
-      const groupSnap = await tx.get(groupRef)
-      if (!groupSnap.exists()) continue
-
-      const groupData = groupSnap.data() as Record<string, unknown>
-      const members   = (groupData.members       as string[]) ?? []
-      const pending   = (groupData.pendingInvites as string[]) ?? []
-
-      if (!pending.includes(email)) continue
-
-      tx.update(groupRef, {
-        members:        [...members, uid],
-        pendingInvites: pending.filter((e) => e !== email),
-      })
-      resolvedGroupIds.push(groupId)
-    }
-
-    tx.delete(inviteRef)
-  })
-
-  if (resolvedGroupIds.length === 0) return
-
-  // Phase 2: rewrite expense split keys from email → uid across all resolved groups.
-  // Firestore batch writes are capped at 500 ops; we chunk if needed.
-  for (const groupId of resolvedGroupIds) {
+  for (const groupId of allGroupIds) {
     const expSnap = await getDocs(
       collection(db, `groups/${groupId}/expenses`)
     )
