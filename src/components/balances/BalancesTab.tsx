@@ -151,9 +151,70 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
               <p className="text-success font-semibold">All settled up 🎉</p>
             </div>
           ) : myBalance.net === 0 ? (
-            <div className="p-5 text-center">
-              <p className="text-[#8E8E9A]">Your balance is zero</p>
-            </div>
+            <>
+              <div className="px-5 pt-5 pb-3 text-center">
+                <p className="text-[#8E8E9A]">Your balance is zero</p>
+              </div>
+              {Object.keys(myBreakdown.perPerson).length > 0 && (
+                <div className="mx-4 mb-4">
+                  <button
+                    onClick={() => { setBreakdownOpen((v) => !v); setExpandedPaidBy(null) }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-sm border border-[#2A2A32] text-[#8E8E9A] hover:text-[#F2F2F7] hover:border-faint text-xs transition-colors"
+                  >
+                    <span>Paid for you — by person</span>
+                    {breakdownOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                  </button>
+
+                  {breakdownOpen && (
+                    <div className="mt-1.5 rounded-sm border border-[#2A2A32] bg-background overflow-hidden divide-y divide-[#1A1A1F]">
+                      {Object.entries(myBreakdown.perPerson)
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([uid, amount]) => {
+                          const isOpen = expandedPaidBy === uid
+                          const exps   = myBreakdown.perPersonExpenses[uid] ?? []
+                          return (
+                            <div key={uid}>
+                              <button
+                                onClick={() => setExpandedPaidBy(isOpen ? null : uid)}
+                                className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-[#1A1A1F] transition-colors text-left"
+                              >
+                                {avatar(uid, 24)}
+                                <span className="flex-1 text-[#F2F2F7] text-xs truncate">{name(uid)}</span>
+                                <span className="font-mono text-xs text-[#F87171] mr-2">-{formatINR(amount)}</span>
+                                {isOpen ? <ChevronUp size={11} className="text-faint shrink-0" /> : <ChevronDown size={11} className="text-faint shrink-0" />}
+                              </button>
+                              {isOpen && (
+                                <div className="border-t border-[#2A2A32] bg-[#0D0D0F] divide-y divide-[#1A1A1F]">
+                                  {exps.map((e) => {
+                                    const myShare = e.splits[currentUid] ?? 0
+                                    const date    = new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+                                    return (
+                                      <div key={e.id} className="flex items-center gap-2 px-4 py-2.5">
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-[#F2F2F7] text-[11px] font-medium truncate">{e.title}</p>
+                                          <p className="text-faint text-[10px] mt-0.5">
+                                            {name(uid)} paid {formatINR(e.amount)} · {date}
+                                          </p>
+                                        </div>
+                                        <span className="font-mono text-[11px] text-[#F87171] shrink-0">-{formatINR(myShare)}</span>
+                                      </div>
+                                    )
+                                  })}
+                                  <div className="flex items-center justify-between px-4 py-2 bg-[#111113]">
+                                    <span className="text-faint text-[10px]">{exps.length} expense{exps.length > 1 ? 's' : ''} · {name(uid)} paid for you</span>
+                                    <span className="font-mono text-[11px] text-[#F87171] font-semibold">-{formatINR(amount)}</span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })
+                      }
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           ) : (
             <>
               {/* Top: amount */}
