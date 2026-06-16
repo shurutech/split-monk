@@ -144,13 +144,14 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
       const creditor    = userCache[s.to]
       if (!debtor?.email) return null
 
-      // Find expenses where creditor paid and debtor has a share
+      // All expenses where the debtor has a share but didn't pay — grouped by who paid
       const relevantExps = active
-        .filter((e) => e.paidBy === s.to && (e.splits[s.from] ?? 0) > 0)
+        .filter((e) => e.paidBy !== s.from && (e.splits[s.from] ?? 0) > 0)
         .sort((a, b) => (b.splits[s.from] ?? 0) - (a.splits[s.from] ?? 0))
 
-      const topExpenses = relevantExps.slice(0, 5).map((e) => ({
+      const topExpenses = relevantExps.slice(0, 8).map((e) => ({
         title:     e.title,
+        paidBy:    userCache[e.paidBy]?.displayName?.split(' ')[0] ?? name(e.paidBy),
         yourShare: formatINR(e.splits[s.from] ?? 0),
       }))
 

@@ -6,7 +6,7 @@ export interface ReminderRecipient {
   owesTo:       string        // name of creditor
   amount:       string        // formatted e.g. "₹4,949"
   expenseCount: number
-  topExpenses:  { title: string; yourShare: string }[]
+  topExpenses:  { title: string; yourShare: string; paidBy?: string }[]
 }
 
 export interface ReminderPayload {

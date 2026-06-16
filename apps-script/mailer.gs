@@ -109,14 +109,17 @@ function buildReminderHtml(to, recipientName, owesTo, amount, groupName, groupUr
 
   var expensesHtml = '';
   if (topExpenses.length > 0) {
-    expensesHtml += '<p style="margin:20px 0 8px;color:#8E8E9A;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;">Your share breakdown</p>';
+    expensesHtml += '<p style="margin:20px 0 8px;color:#8E8E9A;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;">Here\'s what you owe for</p>';
     expensesHtml += '<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #2A2A32;border-radius:8px;overflow:hidden;">';
     for (var i = 0; i < topExpenses.length; i++) {
       var exp = topExpenses[i];
       var bg  = i % 2 === 0 ? '#0D0D0F' : '#111113';
       expensesHtml += '<tr style="background:' + bg + ';">'
-        + '<td style="padding:10px 14px;color:#F2F2F7;font-size:13px;">' + escHtml(exp.title) + '</td>'
-        + '<td style="padding:10px 14px;color:#F87171;font-size:13px;font-family:monospace;text-align:right;white-space:nowrap;">' + escHtml(exp.yourShare) + '</td>'
+        + '<td style="padding:10px 14px;">'
+        + '<p style="margin:0;color:#F2F2F7;font-size:13px;">' + escHtml(exp.title) + '</p>'
+        + (exp.paidBy ? '<p style="margin:2px 0 0;color:#8E8E9A;font-size:11px;">paid by ' + escHtml(exp.paidBy) + '</p>' : '')
+        + '</td>'
+        + '<td style="padding:10px 14px;color:#F87171;font-size:13px;font-family:monospace;text-align:right;white-space:nowrap;vertical-align:top;">' + escHtml(exp.yourShare) + '</td>'
         + '</tr>';
     }
     if (expenseCount > topExpenses.length) {
@@ -194,9 +197,11 @@ function buildReminderText(recipientName, owesTo, amount, groupName, groupUrl, s
     '',
   ];
   if (topExpenses.length > 0) {
-    lines.push('Your share breakdown:');
+    lines.push('Here\'s what you owe for:');
     topExpenses.forEach(function(exp) {
-      lines.push('  • ' + exp.title + ': ' + exp.yourShare);
+      var line = '  • ' + exp.title + ': ' + exp.yourShare;
+      if (exp.paidBy) line += ' (paid by ' + exp.paidBy + ')';
+      lines.push(line);
     });
     lines.push('');
   }
