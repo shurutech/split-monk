@@ -5,7 +5,7 @@ import { Balance, Expense, Group, Settlement, SettlementSuggestion, User } from 
 import { formatINR } from '@/lib/calculations'
 import { getUserById, recordSettlement } from '@/lib/firestore'
 import { UserAvatar } from '@/components/ui/UserAvatar'
-import { ArrowRight, CheckCircle2, Loader2, Mail, History, Smartphone, ChevronDown, ChevronUp, Copy } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Loader2, Mail, History, Smartphone, ChevronDown, ChevronUp, Copy, Bell, BellRing } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Props {
@@ -33,6 +33,8 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
   const [breakdownOpen,      setBreakdownOpen]      = useState(false)
   const [expandedPaidBy,     setExpandedPaidBy]     = useState<string | null>(null)
   const [copiedUpi,          setCopiedUpi]          = useState<string | null>(null)
+  const [reminding,          setReminding]          = useState<string | null>(null)   // uid being reminded, or 'bulk', or 'test'
+  const [reminded,           setReminded]           = useState<Set<string>>(new Set()) // uids already sent this session
 
   useEffect(() => {
     const toFetch = new Set<string>([
@@ -121,6 +123,89 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
       toast.error('Failed to record settlement')
     } finally {
       setSettling(null)
+    }
+  }
+
+  // ── Reminder helpers ─────────────────────────────────────────────────────────
+
+  const isOrganizer    = group.createdBy === currentUid
+  const tripEnded      = group.endDate ? new Date(group.endDate) < new Date() : false
+  const showReminders  = isOrganizer && tripEnded
+
+  function buildReminderPayload(targets: SettlementSuggestion[]) {
+    const active        = expenses.filter((e) => !e.isDeleted)
+    const organizerName = userCache[currentUid]?.displayName?.split(' ')[0] ?? 'Organizer'
+    const tripEndDate   = group.endDate
+      ? new Date(group.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+      : undefined
+
+    const recipients = targets.map((s) => {
+      const debtor      = userCache[s.from]
+      const creditor    = userCache[s.to]
+      if (!debtor?.email) return null
+
+      // Find expenses where creditor paid and debtor has a share
+      const relevantExps = active
+        .filter((e) => e.paidBy === s.to && (e.splits[s.from] ?? 0) > 0)
+        .sort((a, b) => (b.splits[s.from] ?? 0) - (a.splits[s.from] ?? 0))
+
+      const topExpenses = relevantExps.slice(0, 5).map((e) => ({
+        title:     e.title,
+        yourShare: formatINR(e.splits[s.from] ?? 0),
+      }))
+
+      return {
+        email:         debtor.email,
+        recipientName: debtor.displayName?.split(' ')[0] ?? debtor.email.split('@')[0],
+        owesTo:        creditor?.displayName?.split(' ')[0] ?? name(s.to),
+        amount:        formatINR(s.amount),
+        expenseCount:  relevantExps.length,
+        topExpenses,
+      }
+    }).filter(Boolean)
+
+    return { recipients, organizerName, tripEndDate }
+  }
+
+  async function sendReminders(targets: SettlementSuggestion[], key: string) {
+    setReminding(key)
+    try {
+      const { recipients, organizerName, tripEndDate } = buildReminderPayload(targets)
+      if (recipients.length === 0) {
+        toast.error('No email found for recipient')
+        return
+      }
+
+      const res = await fetch('/api/remind', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          groupId:     group.id,
+          groupName:   group.name,
+          coverColor:  group.coverColor,
+          sentBy:      organizerName,
+          tripEndDate,
+          recipients,
+        }),
+      })
+
+      const data = await res.json()
+      const failed = (data.results ?? []).filter((r: { success: boolean }) => !r.success)
+
+      if (failed.length === 0) {
+        toast.success(recipients.length > 1 ? `${recipients.length} reminders sent` : 'Reminder sent')
+        setReminded((prev) => {
+          const next = new Set(prev)
+          targets.forEach((t) => next.add(t.from))
+          return next
+        })
+      } else {
+        toast.error('Some reminders failed to send')
+      }
+    } catch {
+      toast.error('Failed to send reminder')
+    } finally {
+      setReminding(null)
     }
   }
 
@@ -317,7 +402,31 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
       {/* ── Suggested settlements ──────────────────────────────────────────── */}
       {settlements.length > 0 && (
         <div>
-          <h3 className="text-[#8E8E9A] text-xs uppercase tracking-wide mb-3">Suggested settlements</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[#8E8E9A] text-xs uppercase tracking-wide">Suggested settlements</h3>
+            {isOrganizer && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => sendReminders([{ ...settlements[0], from: currentUid }], 'test')}
+                  disabled={!!reminding}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-sm border border-[#2A2A32] text-[#8E8E9A] text-[11px] font-medium hover:text-[#F2F2F7] hover:border-faint transition-colors disabled:opacity-40"
+                >
+                  {reminding === 'test' ? <Loader2 size={10} className="animate-spin" /> : <Bell size={10} />}
+                  Test
+                </button>
+                {showReminders && settlements.some((s) => userCache[s.from]?.email) && (
+                  <button
+                    onClick={() => sendReminders(settlements, 'bulk')}
+                    disabled={!!reminding}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-sm border border-[rgba(124,107,248,0.4)] bg-[rgba(124,107,248,0.08)] text-[#7C6BF8] text-[11px] font-medium hover:bg-[rgba(124,107,248,0.16)] transition-colors disabled:opacity-40"
+                  >
+                    {reminding === 'bulk' ? <Loader2 size={10} className="animate-spin" /> : <BellRing size={10} />}
+                    Remind all
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
           <div className="space-y-3">
             {settlements.map((s) => {
               const key          = `${s.from}-${s.to}`
@@ -385,6 +494,30 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
                           </button>
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {/* Per-row remind — organizer only, trip ended, debtor has email */}
+                  {showReminders && userCache[s.from]?.email && (
+                    <div className="border-t border-[#1A1A1F] px-4 py-2.5 flex items-center justify-between">
+                      <p className="text-faint text-[11px]">
+                        Send a payment reminder to <span className="text-[#F2F2F7]">{name(s.from)}</span>
+                      </p>
+                      <button
+                        onClick={() => sendReminders([s], s.from)}
+                        disabled={!!reminding}
+                        className={`shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-sm border text-[11px] font-medium transition-colors disabled:opacity-40 ml-3 whitespace-nowrap ${
+                          reminded.has(s.from)
+                            ? 'border-[rgba(52,211,153,0.25)] text-success bg-[rgba(52,211,153,0.06)]'
+                            : 'border-[#2A2A32] text-[#8E8E9A] hover:text-[#F2F2F7] hover:border-faint'
+                        }`}
+                      >
+                        {reminding === s.from
+                          ? <Loader2 size={11} className="animate-spin" />
+                          : reminded.has(s.from) ? <CheckCircle2 size={11} /> : <Bell size={11} />
+                        }
+                        {reminded.has(s.from) ? 'Sent' : 'Remind'}
+                      </button>
                     </div>
                   )}
                 </div>
