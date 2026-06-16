@@ -34,7 +34,7 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
   const [expandedPaidBy,     setExpandedPaidBy]     = useState<string | null>(null)
   const [copiedUpi,          setCopiedUpi]          = useState<string | null>(null)
   const [reminding,          setReminding]          = useState<string | null>(null)   // uid being reminded, or 'bulk', or 'test'
-  const [reminded,           setReminded]           = useState<Set<string>>(new Set()) // uids already sent this session
+  const [reminded,           setReminded]           = useState<Set<string>>(new Set()) // "from-to" keys already sent this session
 
   useEffect(() => {
     const toFetch = new Set<string>([
@@ -196,7 +196,7 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
         toast.success(recipients.length > 1 ? `${recipients.length} reminders sent` : 'Reminder sent')
         setReminded((prev) => {
           const next = new Set(prev)
-          targets.forEach((t) => next.add(t.from))
+          targets.forEach((t) => next.add(`${t.from}-${t.to}`))
           return next
         })
       } else {
@@ -504,19 +504,19 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
                         Send a payment reminder to <span className="text-[#F2F2F7]">{name(s.from)}</span>
                       </p>
                       <button
-                        onClick={() => sendReminders([s], s.from)}
+                        onClick={() => sendReminders([s], `${s.from}-${s.to}`)}
                         disabled={!!reminding}
                         className={`shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-sm border text-[11px] font-medium transition-colors disabled:opacity-40 ml-3 whitespace-nowrap ${
-                          reminded.has(s.from)
+                          reminded.has(`${s.from}-${s.to}`)
                             ? 'border-[rgba(52,211,153,0.25)] text-success bg-[rgba(52,211,153,0.06)]'
                             : 'border-[#2A2A32] text-[#8E8E9A] hover:text-[#F2F2F7] hover:border-faint'
                         }`}
                       >
-                        {reminding === s.from
+                        {reminding === `${s.from}-${s.to}`
                           ? <Loader2 size={11} className="animate-spin" />
-                          : reminded.has(s.from) ? <CheckCircle2 size={11} /> : <Bell size={11} />
+                          : reminded.has(`${s.from}-${s.to}`) ? <CheckCircle2 size={11} /> : <Bell size={11} />
                         }
-                        {reminded.has(s.from) ? 'Sent' : 'Remind'}
+                        {reminded.has(`${s.from}-${s.to}`) ? 'Sent' : 'Remind'}
                       </button>
                     </div>
                   )}
