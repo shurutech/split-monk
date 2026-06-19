@@ -70,6 +70,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             startDate:   startDate   ?? null,
             endDate:     endDate     ?? null,
             memberNames: memberNames ?? [],
+            appUrl:      process.env.NEXT_PUBLIC_APP_URL ?? 'https://splitmonk.in',
           }),
           // Apps Script can be slow on cold start — give it 10s
           signal: AbortSignal.timeout(10_000),

@@ -2,8 +2,7 @@
 // Deploy as Web App: Execute as Me, Anyone can access
 // Paste this entire file into the Apps Script editor.
 
-var APP_URL = 'https://split-monk.vercel.app'; // update if custom domain
-// var APP_URL = 'http://localhost:3000'; // update if custom domain
+var APP_URL_DEFAULT = 'https://splitmonk.in'; // fallback if not passed in payload
 
 // Set this to any random string, then add the same value as
 // APPS_SCRIPT_SECRET in your .env.local and Vercel env vars.
@@ -52,6 +51,7 @@ function handleInvite(payload) {
   var startDate   = payload.startDate   || null;
   var endDate     = payload.endDate     || null;
   var memberNames = payload.memberNames || [];
+  var appUrl      = payload.appUrl      || APP_URL_DEFAULT;
 
   if (!to || !groupName || !groupId || !invitedBy) {
     return jsonResponse(400, 'Missing required fields: to, groupName, groupId, invitedBy');
@@ -60,7 +60,7 @@ function handleInvite(payload) {
     return jsonResponse(400, 'Invalid recipient email');
   }
 
-  var groupUrl = APP_URL + '/groups/' + groupId;
+  var groupUrl = appUrl + '/groups/' + groupId;
   var subject  = invitedBy + ' added you to "' + groupName + '" on SplitMonk';
   var htmlBody = buildInviteHtml(to, groupName, groupId, groupUrl, invitedBy, coverColor, startDate, endDate, memberNames);
   var textBody = buildInviteText(groupName, groupUrl, invitedBy, memberNames);
@@ -72,17 +72,18 @@ function handleInvite(payload) {
 // ── Reminder handler (settlement nudge) ───────────────────────────────────────
 
 function handleReminder(payload) {
-  var to            = payload.to;            // recipient email (the person who owes)
-  var recipientName = payload.recipientName; // their first name
-  var owesTo        = payload.owesTo;        // name of who they owe
-  var amount        = payload.amount;        // formatted string e.g. "₹4,949"
+  var to            = payload.to;
+  var recipientName = payload.recipientName;
+  var owesTo        = payload.owesTo;
+  var amount        = payload.amount;
   var groupName     = payload.groupName;
   var groupId       = payload.groupId;
-  var sentBy        = payload.sentBy;        // organizer name
+  var sentBy        = payload.sentBy;
   var coverColor    = payload.coverColor    || '#7C6BF8';
   var tripEndDate   = payload.tripEndDate   || null;
   var expenseCount  = payload.expenseCount  || 0;
-  var topExpenses   = payload.topExpenses   || []; // [{ title, yourShare }]
+  var topExpenses   = payload.topExpenses   || [];
+  var appUrl        = payload.appUrl        || APP_URL_DEFAULT;
 
   if (!to || !recipientName || !owesTo || !amount || !groupName || !groupId || !sentBy) {
     return jsonResponse(400, 'Missing required reminder fields');
@@ -91,7 +92,7 @@ function handleReminder(payload) {
     return jsonResponse(400, 'Invalid recipient email');
   }
 
-  var groupUrl = APP_URL + '/groups/' + groupId;
+  var groupUrl = appUrl + '/groups/' + groupId;
   var subject  = '💸 You owe ' + owesTo + ' ' + amount + ' — ' + groupName;
   var htmlBody = buildReminderHtml(to, recipientName, owesTo, amount, groupName, groupUrl, sentBy, coverColor, tripEndDate, expenseCount, topExpenses);
   var textBody = buildReminderText(recipientName, owesTo, amount, groupName, groupUrl, sentBy, topExpenses);

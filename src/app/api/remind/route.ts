@@ -66,6 +66,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             tripEndDate:   tripEndDate ?? null,
             expenseCount:  r.expenseCount,
             topExpenses:   r.topExpenses,
+            appUrl:        process.env.NEXT_PUBLIC_APP_URL ?? 'https://splitmonk.in',
           }),
           signal: AbortSignal.timeout(10_000),
         })
