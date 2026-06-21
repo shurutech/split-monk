@@ -454,7 +454,7 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
                     </div>
                   </div>
 
-                  {(isMyPayment || s.to === currentUid) && (
+                  {(isMyPayment || s.to === currentUid || isOrganizer) && (
                     <div className="px-4 pb-4 space-y-2">
                       <div className="flex gap-2">
                         <input
