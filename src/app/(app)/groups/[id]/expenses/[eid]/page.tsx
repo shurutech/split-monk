@@ -43,6 +43,7 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
         title:     d.title,
         amount:    d.amount,
         paidBy:    d.paidBy,
+        payments:  d.payments ?? undefined,
         splitType: d.splitType,
         splits:    d.splits,
         date:      tsToDate(d.date),
@@ -56,10 +57,11 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
     }, () => {})  // swallow permission-denied during invite resolution
   }, [id, eid])
 
-  // Fetch all split participants (skip email keys — they're pending invites, not UIDs)
+  // Fetch all split participants + payers (skip email keys — they're pending invites, not UIDs)
   useEffect(() => {
     if (!expense) return
-    const keys = [expense.paidBy, ...Object.keys(expense.splits)]
+    const payerKeys = expense.payments ? Object.keys(expense.payments) : [expense.paidBy]
+    const keys = [...payerKeys, ...Object.keys(expense.splits)]
     const unique = [...new Set(keys)].filter((k) => !isPendingKey(k))
     unique.forEach(async (uid) => {
       if (userCache[uid]) return
@@ -127,7 +129,16 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
             <p className="font-mono text-3xl font-bold text-[#F2F2F7]">{formatINR(expense.amount)}</p>
             <p className="text-[#8E8E9A] text-sm mt-1">
               Paid by{' '}
-              <span className="text-[#F2F2F7] font-medium">{name(expense.paidBy)}</span>
+              {expense.payments
+                ? Object.entries(expense.payments).map(([uid, amt], i, arr) => (
+                    <span key={uid}>
+                      <span className="text-[#F2F2F7] font-medium">{name(uid)}</span>
+                      <span className="text-[#8E8E9A] font-mono text-xs"> ({formatINR(amt)})</span>
+                      {i < arr.length - 1 && <span className="text-faint">, </span>}
+                    </span>
+                  ))
+                : <span className="text-[#F2F2F7] font-medium">{name(expense.paidBy)}</span>
+              }
             </p>
           </div>
           <span className="px-2.5 py-1 rounded-full bg-[#1A1A1F] border border-[#2A2A32] text-[#8E8E9A] text-xs">

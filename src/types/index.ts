@@ -37,7 +37,8 @@ export interface Expense {
   id: string
   title: string
   amount: number // in PAISE (₹1 = 100 paise)
-  paidBy: string
+  paidBy: string // uid for single payer, 'multiple' sentinel for multi-payer
+  payments?: Record<string, number> // multi-payer only: uid → paise paid. absent on old expenses
   splitType: 'equal' | 'exact' | 'percentage'
   splits: Split
   date: Date
@@ -83,7 +84,8 @@ export interface CreateGroupInput {
 export interface AddExpenseInput {
   title: string
   amount: number // in PAISE
-  paidBy: string
+  paidBy: string // uid or 'multiple'
+  payments?: Record<string, number> // multi-payer only
   splitType: 'equal' | 'exact' | 'percentage'
   splits: Split
   date: Date

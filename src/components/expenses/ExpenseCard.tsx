@@ -29,12 +29,17 @@ function relativeDate(date: Date): string {
 interface Props {
   expense: Expense
   groupId: string
-  paidByName: string
+  paidByName: string  // ignored for multi-payer; pass a placeholder
+  payerNames?: string[] // all payer names for multi-payer expenses
 }
 
-export function ExpenseCard({ expense, groupId, paidByName }: Props) {
+export function ExpenseCard({ expense, groupId, paidByName, payerNames }: Props) {
   const splitCount = Object.keys(expense.splits).length
   const catLabel   = EXPENSE_CATEGORIES.find((c) => c.value === expense.category)?.label ?? 'Other'
+
+  const paidByLabel = expense.payments && payerNames && payerNames.length > 0
+    ? payerNames.join(', ')
+    : paidByName
 
   return (
     <Link
@@ -50,7 +55,7 @@ export function ExpenseCard({ expense, groupId, paidByName }: Props) {
       <div className="flex-1 min-w-0">
         <p className="text-[#F2F2F7] text-sm font-medium truncate">{expense.title}</p>
         <p className="text-[#4A4A56] text-xs mt-0.5 truncate">
-          {paidByName} · {splitCount} people · {relativeDate(expense.date)}
+          {paidByLabel} · {splitCount} people · {relativeDate(expense.date)}
         </p>
       </div>
 

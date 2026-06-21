@@ -23,9 +23,16 @@ export function ExpenseList({ expenses, loading, groupId, currentUid }: Props) {
   const [userCache, setUserCache] = useState<Record<string, User>>({})
   const [filter,    setFilter]    = useState<Filter>('all')
 
-  // Fetch display names for unique payers — skip email keys (pending invites, no user doc)
+  // Fetch display names for all payers (single + multi-payer uid sets)
   useEffect(() => {
-    const keys = [...new Set(expenses.map((e) => e.paidBy))].filter((k) => !k.includes('@'))
+    const keys = new Set<string>()
+    expenses.forEach((e) => {
+      if (e.payments) {
+        Object.keys(e.payments).forEach((uid) => keys.add(uid))
+      } else if (!e.paidBy.includes('@')) {
+        keys.add(e.paidBy)
+      }
+    })
     keys.forEach(async (uid) => {
       if (userCache[uid]) return
       const u = await getUserById(uid)
@@ -39,19 +46,30 @@ export function ExpenseList({ expenses, loading, groupId, currentUid }: Props) {
     return userCache[key]?.displayName?.split(' ')[0] ?? '…'
   }
 
-  // "Mine" = expenses where I paid OR I have a split share
+  function payerNames(e: Expense): string[] | undefined {
+    if (!e.payments) return undefined
+    return Object.keys(e.payments).map(paidByName)
+  }
+
+  function iMyExpense(e: Expense): boolean {
+    if (e.payments) return (e.payments[currentUid] ?? 0) > 0 || (e.splits[currentUid] ?? 0) > 0
+    return e.paidBy === currentUid || (e.splits[currentUid] ?? 0) > 0
+  }
+
+  // "Mine" = expenses where I paid (single or multi) OR I have a split share
   const filtered = useMemo(() => {
     if (filter === 'all') return expenses
-    return expenses.filter(
-      (e) => e.paidBy === currentUid || (e.splits[currentUid] ?? 0) > 0,
-    )
+    return expenses.filter(iMyExpense)
   }, [expenses, filter, currentUid])
 
   // My total spend (what I actually paid out) and net share (what I'm responsible for)
   const myStats = useMemo(() => {
     if (filter !== 'mine') return null
-    const iPaid    = filtered.filter((e) => e.paidBy === currentUid).reduce((s, e) => s + e.amount, 0)
-    const myShare  = filtered.reduce((s, e) => s + (e.splits[currentUid] ?? 0), 0)
+    const iPaid = filtered.reduce((s, e) => {
+      if (e.payments) return s + (e.payments[currentUid] ?? 0)
+      return e.paidBy === currentUid ? s + e.amount : s
+    }, 0)
+    const myShare = filtered.reduce((s, e) => s + (e.splits[currentUid] ?? 0), 0)
     return { iPaid, myShare }
   }, [filtered, filter, currentUid])
 
@@ -165,6 +183,7 @@ export function ExpenseList({ expenses, loading, groupId, currentUid }: Props) {
               expense={exp}
               groupId={groupId}
               paidByName={paidByName(exp.paidBy)}
+              payerNames={payerNames(exp)}
             />
           ))}
         </div>

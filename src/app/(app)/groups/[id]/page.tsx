@@ -65,7 +65,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   const balances              = expLoading ? [] : calculateBalances(expenses, group.members, group.pendingInvites ?? [], recordedSettlements)
-  const settlementSuggestions = balances.length ? getOptimalSettlements(balances) : []
+  const settlementSuggestions = balances.length ? getOptimalSettlements(balances).filter((s) => s.amount >= 100) : []
   const myBalance             = balances.find((b) => b.uid === user?.uid)
   // Compute totalSpend from live expenses to avoid counter drift
   const totalSpend            = expLoading ? group.totalSpend : expenses.reduce((sum, e) => sum + e.amount, 0)
@@ -138,8 +138,8 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
         <StatCard label="Total spent" value={formatINR(totalSpend)} />
         <StatCard
           label="Your balance"
-          value={myBalance ? (myBalance.net >= 0 ? `+${formatINR(myBalance.net)}` : formatINR(myBalance.net)) : '—'}
-          valueClass={myBalance && myBalance.net !== 0 ? (myBalance.net > 0 ? 'text-[#34D399]' : 'text-[#F87171]') : 'text-[#8E8E9A]'}
+          value={myBalance ? (Math.abs(myBalance.net) < 100 ? '+₹0' : myBalance.net >= 0 ? `+${formatINR(myBalance.net)}` : formatINR(myBalance.net)) : '—'}
+          valueClass={myBalance && Math.abs(myBalance.net) >= 100 ? (myBalance.net > 0 ? 'text-[#34D399]' : 'text-[#F87171]') : 'text-[#8E8E9A]'}
         />
         <StatCard label="Expenses" value={String(expenses.length)} />
       </div>

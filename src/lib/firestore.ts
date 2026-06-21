@@ -81,6 +81,7 @@ function docToExpense(id: string, data: Record<string, unknown>): Expense {
     title:     data.title as string,
     amount:    data.amount as number,
     paidBy:    data.paidBy as string,
+    payments:  data.payments as Record<string, number> | undefined,
     splitType: data.splitType as Expense['splitType'],
     splits:    data.splits as Record<string, number>,
     date:      tsToDate(data.date),
@@ -405,7 +406,8 @@ export async function addExpense(groupId: string, data: AddExpenseInput): Promis
     tx.set(expRef, {
       title:     data.title,
       amount:    data.amount,
-      paidBy:    data.paidBy,
+      paidBy:    data.payments ? 'multiple' : data.paidBy,
+      ...(data.payments ? { payments: data.payments } : {}),
       splitType: data.splitType,
       splits:    data.splits,
       date:      Timestamp.fromDate(data.date),
@@ -444,7 +446,9 @@ export async function updateExpense(
     tx.update(expRef, {
       title:     data.title,
       amount:    data.amount,
-      paidBy:    data.paidBy,
+      paidBy:    data.payments ? 'multiple' : data.paidBy,
+      // explicitly null out payments if switching back to single payer
+      payments:  data.payments ?? null,
       splitType: data.splitType,
       splits:    data.splits,
       date:      Timestamp.fromDate(data.date),

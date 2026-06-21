@@ -97,11 +97,19 @@ export function calculateBalances(
   const net: Record<string, number> = {}
   allKeys.forEach((key) => { net[key] = 0 })
 
-  // Apply expenses: payer gets credit, each split participant gets debited
+  // Apply expenses: payer(s) get credit, each split participant gets debited
   expenses
     .filter((e) => !e.isDeleted)
     .forEach((expense) => {
-      net[expense.paidBy] = (net[expense.paidBy] ?? 0) + expense.amount
+      if (expense.payments) {
+        // Multi-payer: each payer gets credit for exactly what they paid
+        Object.entries(expense.payments).forEach(([uid, paid]) => {
+          net[uid] = (net[uid] ?? 0) + paid
+        })
+      } else {
+        // Single payer (all existing expenses)
+        net[expense.paidBy] = (net[expense.paidBy] ?? 0) + expense.amount
+      }
       Object.entries(expense.splits).forEach(([key, share]) => {
         net[key] = (net[key] ?? 0) - share
       })

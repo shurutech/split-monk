@@ -14,9 +14,19 @@ export function exportGroupToCSV(group: Group, expenses: Expense[], users: User[
 
   const active = expenses.filter((e) => !e.isDeleted)
 
+  function resolvePaidBy(e: Expense): string {
+    if (!e.payments) return resolveName(e.paidBy)
+    return Object.entries(e.payments)
+      .map(([uid, amt]) => `${resolveName(uid)} (${toRupees(amt).toFixed(2)})`)
+      .join('; ')
+  }
+
   // Collect all unique participant keys across all expenses (payers + split members)
   const allParticipantKeys = Array.from(
-    new Set(active.flatMap((e) => [e.paidBy, ...Object.keys(e.splits)]))
+    new Set(active.flatMap((e) => [
+      ...(e.payments ? Object.keys(e.payments) : [e.paidBy]),
+      ...Object.keys(e.splits),
+    ]))
   )
 
   const headers = [
@@ -35,7 +45,7 @@ export function exportGroupToCSV(group: Group, expenses: Expense[], users: User[
       new Date(e.date).toLocaleDateString('en-IN'),
       `"${e.title.replace(/"/g, '""')}"`,
       toRupees(e.amount).toFixed(2),
-      resolveName(e.paidBy),
+      `"${resolvePaidBy(e)}"`,
       e.category,
       e.splitType,
       `"${(e.notes ?? '').replace(/"/g, '""')}"`,

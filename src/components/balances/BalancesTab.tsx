@@ -40,34 +40,57 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
     const toFetch = new Set<string>([
       ...group.members,
       ...settlements.map((s) => s.to),
+      // payer UIDs from multi-payer expenses
+      ...expenses.flatMap((e) => e.payments ? Object.keys(e.payments) : []),
     ])
     toFetch.forEach(async (uid) => {
       if (userCache[uid] || isPendingKey(uid)) return
       const u = await getUserById(uid)
       if (u) setUserCache((prev) => ({ ...prev, [uid]: u }))
     })
-  }, [group.members, settlements])
+  }, [group.members, settlements, expenses])
 
   // ── My balance breakdown ──────────────────────────────────────────────────
   const myBreakdown = useMemo(() => {
     const active = expenses.filter((e) => !e.isDeleted)
 
-    // How much I paid that covers OTHER people (not myself)
     let iPaidForOthers = 0
-    // How much others paid that covers ME
     let othersPaidForMe = 0
     // Per-person: how much each person paid that covered me, + which expenses
     const perPerson: Record<string, number> = {}
     const perPersonExpenses: Record<string, Expense[]> = {}
 
     active.forEach((e) => {
-      if (e.paidBy === currentUid) {
-        Object.entries(e.splits).forEach(([key, share]) => {
-          if (key !== currentUid) iPaidForOthers += share
-        })
+      const myShare = e.splits[currentUid] ?? 0
+
+      if (e.payments) {
+        // Multi-payer expense
+        const iPaid = e.payments[currentUid] ?? 0
+        // What I paid that covers others = my payment minus my own split share
+        if (iPaid > 0) iPaidForOthers += Math.max(0, iPaid - myShare)
+        // What others paid that covers my share = my share minus what I paid myself
+        const othersPayingForMe = Math.max(0, myShare - iPaid)
+        if (othersPayingForMe > 0) {
+          othersPaidForMe += othersPayingForMe
+          // Attribute proportionally to each other payer
+          const totalOthersPaid = Object.entries(e.payments)
+            .filter(([uid]) => uid !== currentUid)
+            .reduce((s, [, amt]) => s + amt, 0)
+          Object.entries(e.payments).forEach(([uid, paid]) => {
+            if (uid === currentUid || paid === 0 || totalOthersPaid === 0) return
+            const portion = Math.round(othersPayingForMe * (paid / totalOthersPaid))
+            perPerson[uid] = (perPerson[uid] ?? 0) + portion
+            if (!perPersonExpenses[uid]) perPersonExpenses[uid] = []
+            if (!perPersonExpenses[uid].includes(e)) perPersonExpenses[uid].push(e)
+          })
+        }
       } else {
-        const myShare = e.splits[currentUid] ?? 0
-        if (myShare > 0) {
+        // Single-payer expense
+        if (e.paidBy === currentUid) {
+          Object.entries(e.splits).forEach(([key, share]) => {
+            if (key !== currentUid) iPaidForOthers += share
+          })
+        } else if (myShare > 0) {
           othersPaidForMe += myShare
           perPerson[e.paidBy] = (perPerson[e.paidBy] ?? 0) + myShare
           perPersonExpenses[e.paidBy] = [...(perPersonExpenses[e.paidBy] ?? []), e]
@@ -80,7 +103,7 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
 
 
   const myBalance  = balances.find((b) => b.uid === currentUid)
-  const allSettled = balances.every((b) => b.net === 0)
+  const allSettled = balances.every((b) => Math.abs(b.net) < 100)
 
   function name(key: string) {
     if (key === currentUid) return 'You'
@@ -144,16 +167,29 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
       const creditor    = userCache[s.to]
       if (!debtor?.email) return null
 
-      // All expenses where the debtor has a share but didn't pay — grouped by who paid
+      // All expenses where the debtor has a share but didn't pay (or didn't pay all)
       const relevantExps = active
-        .filter((e) => e.paidBy !== s.from && (e.splits[s.from] ?? 0) > 0)
+        .filter((e) => {
+          const debtorPaid = e.payments ? (e.payments[s.from] ?? 0) : (e.paidBy === s.from ? e.amount : 0)
+          const debtorShare = e.splits[s.from] ?? 0
+          return debtorShare > 0 && debtorPaid < debtorShare
+        })
         .sort((a, b) => (b.splits[s.from] ?? 0) - (a.splits[s.from] ?? 0))
 
-      const topExpenses = relevantExps.slice(0, 8).map((e) => ({
-        title:     e.title,
-        paidBy:    userCache[e.paidBy]?.displayName?.split(' ')[0] ?? name(e.paidBy),
-        yourShare: formatINR(e.splits[s.from] ?? 0),
-      }))
+      const topExpenses = relevantExps.slice(0, 8).map((e) => {
+        let payerLabel: string
+        if (e.payments) {
+          const payers = Object.keys(e.payments).map((uid) => userCache[uid]?.displayName?.split(' ')[0] ?? uid)
+          payerLabel = payers.join(', ')
+        } else {
+          payerLabel = userCache[e.paidBy]?.displayName?.split(' ')[0] ?? name(e.paidBy)
+        }
+        return {
+          title:     e.title,
+          paidBy:    payerLabel,
+          yourShare: formatINR(e.splits[s.from] ?? 0),
+        }
+      })
 
       return {
         email:         debtor.email,
@@ -225,11 +261,13 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
       {/* ── My balance hero ────────────────────────────────────────────────── */}
       {myBalance && (
         <div className={`rounded-md border ${
-          myBalance.net > 0
+          allSettled
             ? 'border-[rgba(52,211,153,0.25)] bg-[rgba(52,211,153,0.06)]'
-            : myBalance.net < 0
-              ? 'border-[rgba(248,113,113,0.25)] bg-[rgba(248,113,113,0.06)]'
-              : 'border-[#2A2A32] bg-[#111113]'
+            : myBalance.net >= 100
+              ? 'border-[rgba(52,211,153,0.25)] bg-[rgba(52,211,153,0.06)]'
+              : myBalance.net <= -100
+                ? 'border-[rgba(248,113,113,0.25)] bg-[rgba(248,113,113,0.06)]'
+                : 'border-[#2A2A32] bg-[#111113]'
         }`}>
           {allSettled ? (
             <div className="p-5 text-center">
@@ -539,8 +577,8 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
               {isPendingKey(b.uid) && (
                 <span className="text-warning text-[10px] font-medium mr-1 shrink-0">invited</span>
               )}
-              <span className={`font-mono text-sm font-medium shrink-0 ${b.net > 0 ? 'text-success' : b.net < 0 ? 'text-[#F87171]' : 'text-faint'}`}>
-                {b.net === 0 ? 'Settled' : b.net > 0 ? `+${formatINR(b.net)}` : formatINR(b.net)}
+              <span className={`font-mono text-sm font-medium shrink-0 ${Math.abs(b.net) >= 100 ? (b.net > 0 ? 'text-success' : 'text-[#F87171]') : 'text-faint'}`}>
+                {Math.abs(b.net) < 100 ? 'Settled' : b.net > 0 ? `+${formatINR(b.net)}` : formatINR(b.net)}
               </span>
             </div>
           ))}
