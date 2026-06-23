@@ -83,7 +83,7 @@ export default function DashboardPage() {
               href="/groups/new"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-sm bg-[#7C6BF8] text-white text-sm font-medium hover:bg-[#6B5CE7] transition-colors"
             >
-              <Plus size={16} /> Create your first trip
+              <Plus size={16} /> {settledGroups.length > 0 ? 'New trip' : 'Create your first trip'}
             </Link>
           }
         />
