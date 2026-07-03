@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Wallet, CheckCircle2, Clock, ChevronDown, ChevronUp, Smartphone, Copy, Check, IndianRupee } from 'lucide-react'
+import { Wallet, CheckCircle2, Clock, ChevronDown, ChevronUp, Copy, Check, IndianRupee } from 'lucide-react'
 import { formatINR } from '@/lib/calculations'
 import { RecordContributionsSheet } from './RecordContributionsSheet'
 import { toast } from 'sonner'
@@ -158,22 +158,12 @@ export function ContributionPoolCard({ group, expenses, members, currentUid }: P
                 )
               }
 
-              const isUpiMobile = /iPhone|iPad|Android/i.test(
-                typeof navigator !== 'undefined' ? navigator.userAgent : ''
-              )
-
               function handleShare() {
                 if (!organiser?.upiId) return
-                if (isUpiMobile) {
-                  const amtRupees = (perPerson / 100).toFixed(2)
-                  const upiLink = `upi://pay?pa=${encodeURIComponent(organiser.upiId)}&pn=${encodeURIComponent(organiser.displayName)}&am=${amtRupees}&cu=INR&tn=${encodeURIComponent(`Trip pool · ${group.name}`)}`
-                  window.open(upiLink, '_blank')
-                } else {
-                  navigator.clipboard.writeText(organiser.upiId)
-                  setUpiCopied(true)
-                  setTimeout(() => setUpiCopied(false), 2000)
-                  toast.success('UPI ID copied — share with pending members')
-                }
+                navigator.clipboard.writeText(organiser.upiId)
+                setUpiCopied(true)
+                setTimeout(() => setUpiCopied(false), 2000)
+                toast.success('UPI ID copied — open any UPI app and pay')
               }
 
               return (
@@ -193,9 +183,7 @@ export function ContributionPoolCard({ group, expenses, members, currentUid }: P
                   >
                     {upiCopied
                       ? <><Check size={10} className="text-success" /><span className="text-success ml-1">Copied</span></>
-                      : isUpiMobile
-                        ? <><Smartphone size={10} /><span className="ml-1">Pay</span></>
-                        : <><Copy size={10} /><span className="ml-1">Copy UPI</span></>
+                      : <><Copy size={10} /><span className="ml-1">Copy UPI</span></>
                     }
                   </button>
                 </div>
