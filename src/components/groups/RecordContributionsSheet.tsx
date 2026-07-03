@@ -144,6 +144,18 @@ export function RecordContributionsSheet({ open, onClose, group, members, paidMa
 
           {/* Member rows */}
           <div className="space-y-2">
+            {(group.pendingInvites ?? []).map((email) => (
+              <div
+                key={email}
+                className="flex items-center gap-3 px-3 py-3 rounded-sm border border-[#2A2A32] bg-[#1A1A1F] opacity-50"
+              >
+                <div className="w-5 h-5 rounded border border-[#3A3A44] shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[#8E8E9A] text-sm truncate">{email}</p>
+                  <p className="text-faint text-[10px]">Hasn't joined yet — can't record</p>
+                </div>
+              </div>
+            ))}
             {group.members.map((uid) => {
               const user = members.find((u) => u.uid === uid);
               const alreadyPaid = paidMap[uid] ?? 0;

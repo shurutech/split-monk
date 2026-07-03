@@ -31,11 +31,14 @@ export function ContributionPoolCard({ group, expenses, members, currentUid }: P
     }
   }
 
-  const totalExpected  = perPerson * group.members.length
+  const pendingInvites = group.pendingInvites ?? []
+  const totalCount     = group.members.length + pendingInvites.length
+  const totalExpected  = perPerson * totalCount
   const totalCollected = Object.values(paidMap).reduce((s, v) => s + v, 0)
   // "paid" = contributed at least the target per-person amount
   const paidCount      = group.members.filter((uid) => (paidMap[uid] ?? 0) >= perPerson).length
-  const allPaid        = paidCount === group.members.length
+  // pending invitees always count as unpaid (no uid, can't be in paidMap)
+  const allPaid        = paidCount === totalCount
   // Progress can exceed 100% if extra contributions were recorded
   const hasExtra       = totalCollected > totalExpected
   const progress       = Math.min(totalCollected / totalExpected, 1)
@@ -64,7 +67,7 @@ export function ContributionPoolCard({ group, expenses, members, currentUid }: P
               {formatINR(perPerson)}/person target ·{' '}
               {hasExtra
                 ? `${formatINR(totalCollected)} collected`
-                : `${paidCount} of ${group.members.length} paid`
+                : `${paidCount} of ${totalCount} paid`
               }
             </p>
           </div>
@@ -148,8 +151,20 @@ export function ContributionPoolCard({ group, expenses, members, currentUid }: P
               )
             })}
 
+            {/* Pending invitees — not yet joined, always unpaid */}
+            {pendingInvites.map((email) => (
+              <div key={email} className="flex items-center gap-3 px-4 py-2.5 border-b border-[#1A1A1F] last:border-b-0">
+                <Clock size={15} className="text-faint shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-[#8E8E9A] truncate">{email}</p>
+                  <p className="text-[10px] text-faint">Invite pending · hasn't joined yet</p>
+                </div>
+                <span className="text-faint text-xs font-mono shrink-0">pending</span>
+              </div>
+            ))}
+
             {/* Single UPI share row — only when there are pending members */}
-            {group.members.some((uid) => (paidMap[uid] ?? 0) < perPerson) && (() => {
+            {(group.members.some((uid) => (paidMap[uid] ?? 0) < perPerson) || pendingInvites.length > 0) && (() => {
               if (!organiser?.upiId) {
                 return (
                   <div className="px-4 py-2.5 border-t border-[#2A2A32] text-faint text-[10px]">
