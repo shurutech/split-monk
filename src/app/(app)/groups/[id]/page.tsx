@@ -135,13 +135,14 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
 
       {/* Stats bar */}
       <div className="grid grid-cols-3 gap-2">
-        <StatCard label="Total spent" value={formatINR(totalSpend)} />
+        <StatCard label="Total spent"   value={formatINR(totalSpend)} loading={expLoading} />
         <StatCard
           label="Your balance"
           value={myBalance ? (Math.abs(myBalance.net) < 100 ? '+₹0' : myBalance.net >= 0 ? `+${formatINR(myBalance.net)}` : formatINR(myBalance.net)) : '—'}
           valueClass={myBalance && Math.abs(myBalance.net) >= 100 ? (myBalance.net > 0 ? 'text-[#34D399]' : 'text-[#F87171]') : 'text-[#8E8E9A]'}
+          loading={expLoading}
         />
-        <StatCard label="Expenses" value={String(expenses.length)} />
+        <StatCard label="Expenses" value={String(expenses.length)} loading={expLoading} />
       </div>
 
       {/* Tabs */}
@@ -212,11 +213,14 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   )
 }
 
-function StatCard({ label, value, valueClass = 'text-[#F2F2F7]' }: { label: string; value: string; valueClass?: string }) {
+function StatCard({ label, value, valueClass = 'text-[#F2F2F7]', loading = false }: { label: string; value: string; valueClass?: string; loading?: boolean }) {
   return (
     <div className="rounded-sm border border-[#2A2A32] bg-[#111113] px-2 py-2.5 sm:px-3 sm:py-3">
       <p className="text-faint text-[9px] sm:text-[10px] uppercase tracking-wide mb-1 truncate">{label}</p>
-      <p className={`font-mono text-xs sm:text-sm font-medium truncate ${valueClass}`}>{value}</p>
+      {loading
+        ? <div className="h-4 w-16 bg-[#2A2A32] rounded animate-pulse mt-0.5" />
+        : <p className={`font-mono text-xs sm:text-sm font-medium truncate ${valueClass}`}>{value}</p>
+      }
     </div>
   )
 }
