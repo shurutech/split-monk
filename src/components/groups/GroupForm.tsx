@@ -178,19 +178,26 @@ export function GroupForm({ onSuccess }: { onSuccess?: (id: string) => void }) {
         createdBy:      user.uid,
       })
 
-      // Send email invites to pending members — fire-and-forget.
-      // Group creation already succeeded; email failure must never block the user.
-      if (pendingEmails.length > 0) {
-        const resolvedNames = resolvedMembers
-          .filter((m) => m.user.uid !== user.uid)
-          .map((m) => m.user.displayName.split(' ')[0])
+      // Send email notifications — pending members get an invite, existing users get
+      // an "you've been added" notification. Fire-and-forget; group creation already succeeded.
+      const resolvedNames = resolvedMembers
+        .filter((m) => m.user.uid !== user.uid)
+        .map((m) => m.user.displayName.split(' ')[0])
 
+      // Emails to notify: pending (need to sign up) + existing resolved members (already have accounts)
+      const existingEmails = resolvedMembers
+        .filter((m) => m.user.uid !== user.uid && m.user.email)
+        .map((m) => m.user.email!)
+
+      const allEmailsToNotify = [...pendingEmails, ...existingEmails]
+
+      if (allEmailsToNotify.length > 0) {
         const invitePayload: InvitePayload = {
           groupId:       id,
           groupName:     name.trim(),
           coverColor,
           invitedBy:     user.displayName ?? user.email ?? 'Someone',
-          pendingEmails,
+          pendingEmails: allEmailsToNotify,
           memberNames:   resolvedNames,
           startDate:     startDate || undefined,
           endDate:       endDate   || undefined,
@@ -210,7 +217,6 @@ export function GroupForm({ onSuccess }: { onSuccess?: (id: string) => void }) {
             const failed = (data.results ?? []).filter((r: { success: boolean }) => !r.success)
             if (failed.length > 0) {
               console.warn('[GroupForm] some invites failed:', failed)
-              // Don't toast an error — group was created, they'll still join via sign-in
             }
           })
           .catch((err) => console.warn('[GroupForm] invite fetch failed:', err))

@@ -122,6 +122,26 @@ export function MemberList({
 
       if (existing) {
         await updateDoc(groupRef, { members: arrayUnion(existing.uid) })
+
+        if (existing.email) {
+          const payload: InvitePayload = {
+            groupId,
+            groupName,
+            coverColor,
+            invitedBy:     users[currentUid]?.displayName ?? 'Someone',
+            pendingEmails: [existing.email],
+            memberNames:   memberUids
+              .filter((uid) => uid !== currentUid)
+              .map((uid) => users[uid]?.displayName?.split(' ')[0] ?? '')
+              .filter(Boolean),
+          }
+          fetch('/api/invite', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify(payload),
+          }).catch(() => {})
+        }
+
         toast.success(`${existing.displayName.split(' ')[0]} added to the trip`)
       } else {
         const batch     = writeBatch(db)

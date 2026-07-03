@@ -248,7 +248,7 @@ function buildInviteHtml(to, groupName, groupId, groupUrl, invitedBy, coverColor
 
     + '<p style="margin:0 0 24px;color:#8E8E9A;font-size:14px;line-height:1.6;">'
     + '<strong style="color:#F2F2F7;">' + escHtml(invitedBy) + '</strong> added you to this trip on SplitMonk. '
-    + 'Sign in to see expenses, balances, and settle up.'
+    + 'Open the app to see expenses, balances, and settle up.'
     + '</p>'
 
     + membersHtml
