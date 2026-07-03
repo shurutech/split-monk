@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Settings, Loader2, Trash2, Archive, Check } from 'lucide-react'
+import { X, Settings, Loader2, Trash2, Archive, Check, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { updateGroup, archiveGroup, deleteGroup } from '@/lib/firestore'
 import { GROUP_COLORS, MAX_GROUP_NAME_LENGTH } from '@/constants'
+import { formatINR } from '@/lib/calculations'
 import type { Group, Expense, Balance } from '@/types'
 
 interface Props {
@@ -22,17 +23,20 @@ export function GroupSettingsSheet({ open, onClose, group, expenses, balances }:
   const router = useRouter()
 
   // Edit fields
-  const [name,       setName]       = useState(group.name)
-  const [startDate,  setStartDate]  = useState(
+  const [name,               setName]               = useState(group.name)
+  const [startDate,          setStartDate]          = useState(
     group.startDate ? group.startDate.toISOString().slice(0, 10) : ''
   )
-  const [endDate,    setEndDate]    = useState(
+  const [endDate,            setEndDate]            = useState(
     group.endDate   ? group.endDate.toISOString().slice(0, 10)   : ''
   )
-  const [coverColor, setCoverColor] = useState(group.coverColor)
-  const [saving,     setSaving]     = useState(false)
-  const [archiving,  setArchiving]  = useState(false)
-  const [deleteState, setDeleteState] = useState<DeleteState>('idle')
+  const [coverColor,         setCoverColor]         = useState(group.coverColor)
+  const [contributionStr,    setContributionStr]    = useState(
+    group.contributionAmount ? String(group.contributionAmount / 100) : ''
+  )
+  const [saving,             setSaving]             = useState(false)
+  const [archiving,          setArchiving]          = useState(false)
+  const [deleteState,        setDeleteState]        = useState<DeleteState>('idle')
 
   // Reset form whenever the sheet opens with fresh group data
   useEffect(() => {
@@ -41,6 +45,7 @@ export function GroupSettingsSheet({ open, onClose, group, expenses, balances }:
       setStartDate(group.startDate ? group.startDate.toISOString().slice(0, 10) : '')
       setEndDate(group.endDate     ? group.endDate.toISOString().slice(0, 10)   : '')
       setCoverColor(group.coverColor)
+      setContributionStr(group.contributionAmount ? String(group.contributionAmount / 100) : '')
       setDeleteState('idle')
     }
   }, [open, group])
@@ -60,15 +65,18 @@ export function GroupSettingsSheet({ open, onClose, group, expenses, balances }:
     return () => { document.body.style.overflow = '' }
   }, [open])
 
-  const hasUnsettledBalances = balances.some((b) => b.net !== 0)
-  const hasExpenses          = expenses.length > 0
+  const hasUnsettledBalances = balances.some((b) => Math.abs(b.net) >= 100)
+  const hasExpenses          = expenses.some((e) => !e.isContribution)
+
+  const contributionPaise = Math.round(parseFloat(contributionStr) * 100) || 0
 
   // Derived: have any field values changed?
   const isDirty =
-    name.trim()   !== group.name       ||
-    coverColor    !== group.coverColor  ||
-    startDate     !== (group.startDate ? group.startDate.toISOString().slice(0, 10) : '') ||
-    endDate       !== (group.endDate   ? group.endDate.toISOString().slice(0, 10)   : '')
+    name.trim()        !== group.name       ||
+    coverColor         !== group.coverColor  ||
+    startDate          !== (group.startDate ? group.startDate.toISOString().slice(0, 10) : '') ||
+    endDate            !== (group.endDate   ? group.endDate.toISOString().slice(0, 10)   : '') ||
+    contributionPaise  !== (group.contributionAmount ?? 0)
 
   async function handleSave() {
     if (!name.trim()) { toast.error('Trip name is required'); return }
@@ -76,13 +84,18 @@ export function GroupSettingsSheet({ open, onClose, group, expenses, balances }:
       toast.error('End date must be after start date')
       return
     }
+    if (contributionStr && (isNaN(parseFloat(contributionStr)) || parseFloat(contributionStr) < 1)) {
+      toast.error('Contribution must be at least ₹1')
+      return
+    }
     setSaving(true)
     try {
       await updateGroup(group.id, {
-        name:       name.trim(),
+        name:               name.trim(),
         coverColor,
-        startDate:  startDate ? new Date(startDate) : null,
-        endDate:    endDate   ? new Date(endDate)   : null,
+        startDate:          startDate ? new Date(startDate) : null,
+        endDate:            endDate   ? new Date(endDate)   : null,
+        contributionAmount: contributionPaise || undefined,
       })
       toast.success('Trip updated')
       onClose()
@@ -116,7 +129,8 @@ export function GroupSettingsSheet({ open, onClose, group, expenses, balances }:
       await deleteGroup(group.id)
       toast.success('Trip deleted')
       router.replace('/dashboard')
-    } catch {
+    } catch (err) {
+      console.error('deleteGroup failed:', err)
       toast.error('Failed to delete trip')
       setDeleteState('idle')
     }
@@ -198,6 +212,32 @@ export function GroupSettingsSheet({ open, onClose, group, expenses, balances }:
                   className="w-full bg-[#1A1A1F] border border-[#2A2A32] rounded-sm px-3 py-2.5 text-[#F2F2F7] text-sm focus:outline-none focus:border-[#7C6BF8] transition-all scheme-dark"
                 />
               </div>
+            </div>
+
+            {/* Contribution per person */}
+            <div className="mb-3">
+              <label className="flex items-center gap-1.5 text-[#8E8E9A] text-xs font-medium mb-1.5">
+                <Wallet size={12} className="text-[#7C6BF8]" />
+                Contribution per person
+                <span className="text-faint font-normal">(optional)</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8E8E9A] text-sm">₹</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={contributionStr}
+                  onChange={(e) => setContributionStr(e.target.value)}
+                  placeholder="0"
+                  className="w-full bg-[#1A1A1F] border border-[#2A2A32] rounded-sm pl-7 pr-3 py-2.5 text-[#F2F2F7] text-sm placeholder-faint focus:outline-none focus:border-[#7C6BF8] focus:shadow-[0_0_0_3px_rgba(124,107,248,0.12)] transition-all"
+                />
+              </div>
+              {contributionPaise > 0 && (
+                <p className="text-faint text-[10px] mt-1">
+                  Each member contributes {formatINR(contributionPaise)} upfront to the trip pool
+                </p>
+              )}
             </div>
 
             {/* Color */}

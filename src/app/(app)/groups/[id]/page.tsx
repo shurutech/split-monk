@@ -1,18 +1,19 @@
 'use client'
 
-import { use, useState } from 'react'
+import { use, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useGroup } from '@/hooks/useGroup'
 import { useExpenses, useSettlements } from '@/hooks/useExpenses'
 import { useAuthContext } from '@/components/auth/AuthProvider'
 import { calculateBalances, getOptimalSettlements, formatINR } from '@/lib/calculations'
-import { getAllUsers } from '@/lib/firestore'
+import { getAllUsers, getUserById } from '@/lib/firestore'
 import { exportGroupToCSV } from '@/lib/export'
 import { ExpenseList } from '@/components/expenses/ExpenseList'
 import { BalancesTab } from '@/components/balances/BalancesTab'
 import { MemberList } from '@/components/groups/MemberList'
 import { SpendingAnalytics } from '@/components/groups/SpendingAnalytics'
 import { GroupSettingsSheet } from '@/components/groups/GroupSettingsSheet'
+import { ContributionPoolCard } from '@/components/groups/ContributionPoolCard'
 import { GroupCardSkeleton } from '@/components/ui/LoadingSkeleton'
 import { ArrowLeft, Plus, Users, ReceiptText, Scale, BarChart2, Download, Settings } from 'lucide-react'
 import Link from 'next/link'
@@ -35,7 +36,16 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   const [activeTab,     setActiveTab]     = useState<Tab>('expenses')
   const [exporting,     setExporting]     = useState(false)
   const [settingsOpen,  setSettingsOpen]  = useState(false)
+  const [memberUsers,   setMemberUsers]   = useState<import('@/types').User[]>([])
   const router                            = useRouter()
+
+  // Load User objects for pool card (member names + display)
+  useEffect(() => {
+    if (!group) return
+    Promise.all(group.members.map((uid) => getUserById(uid))).then((users) => {
+      setMemberUsers(users.filter(Boolean) as import('@/types').User[])
+    })
+  }, [group?.members.join(',')])
 
   if (loading) {
     return (
@@ -64,11 +74,14 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
     )
   }
 
+  // Separate contribution pool expenses from real expenses for display purposes.
+  // Both sets are passed to calculateBalances so the balance engine accounts for contributions.
+  const realExpenses          = expenses.filter((e) => !e.isContribution)
   const balances              = expLoading ? [] : calculateBalances(expenses, group.members, group.pendingInvites ?? [], recordedSettlements)
   const settlementSuggestions = balances.length ? getOptimalSettlements(balances).filter((s) => s.amount >= 100) : []
   const myBalance             = balances.find((b) => b.uid === user?.uid)
-  // Compute totalSpend from live expenses to avoid counter drift
-  const totalSpend            = expLoading ? group.totalSpend : expenses.reduce((sum, e) => sum + e.amount, 0)
+  // Compute totalSpend from live real expenses only (exclude pool contributions)
+  const totalSpend            = expLoading ? group.totalSpend : realExpenses.reduce((sum, e) => sum + e.amount, 0)
 
   async function handleExport() {
     setExporting(true)
@@ -103,7 +116,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
           )}
         </div>
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {expenses.length > 0 && (
+          {realExpenses.length > 0 && (
             <button
               onClick={handleExport}
               disabled={exporting}
@@ -142,8 +155,18 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
           valueClass={myBalance && Math.abs(myBalance.net) >= 100 ? (myBalance.net > 0 ? 'text-[#34D399]' : 'text-[#F87171]') : 'text-[#8E8E9A]'}
           loading={expLoading}
         />
-        <StatCard label="Expenses" value={String(expenses.length)} loading={expLoading} />
+        <StatCard label="Expenses" value={String(realExpenses.length)} loading={expLoading} />
       </div>
+
+      {/* Contribution pool card — shown when organiser has set a contribution amount */}
+      {group.contributionAmount && !expLoading && (
+        <ContributionPoolCard
+          group={group}
+          expenses={expenses}
+          members={memberUsers}
+          currentUid={user?.uid ?? ''}
+        />
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 bg-[#111113] border border-[#2A2A32] rounded-sm p-1">
@@ -169,7 +192,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
       {/* Tab content */}
       {activeTab === 'expenses' && (
         <ExpenseList
-          expenses={expenses}
+          expenses={realExpenses}
           loading={expLoading}
           groupId={id}
           currentUid={user?.uid ?? ''}
@@ -186,7 +209,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
         />
       )}
       {activeTab === 'stats' && (
-        <SpendingAnalytics expenses={expenses} />
+        <SpendingAnalytics expenses={realExpenses} />
       )}
       {activeTab === 'members' && (
         <MemberList

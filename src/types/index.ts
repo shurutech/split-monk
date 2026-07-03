@@ -21,6 +21,7 @@ export interface Group {
   totalSpend: number
   createdAt: Date
   coverColor: string
+  contributionAmount?: number // paise per person; set by organiser for advance pool
 }
 
 // Top-level /invites/{encodedEmail} — resolved on first sign-in
@@ -43,11 +44,12 @@ export interface Expense {
   splits: Split
   date: Date
   notes?: string
-  category: 'food' | 'stay' | 'transport' | 'activity' | 'shopping' | 'other'
+  category: 'food' | 'stay' | 'transport' | 'activity' | 'shopping' | 'other' | 'contribution'
   createdBy: string
   createdAt: Date
   updatedAt: Date
   isDeleted: boolean
+  isContribution?: boolean // true for advance pool contribution expenses
 }
 
 export interface Settlement {
@@ -90,8 +92,9 @@ export interface AddExpenseInput {
   splits: Split
   date: Date
   notes?: string
-  category: 'food' | 'stay' | 'transport' | 'activity' | 'shopping' | 'other'
+  category: 'food' | 'stay' | 'transport' | 'activity' | 'shopping' | 'other' | 'contribution'
   createdBy: string
+  isContribution?: boolean
 }
 
 export interface CreateSettlementInput {

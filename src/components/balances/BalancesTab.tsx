@@ -52,7 +52,8 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
 
   // ── My balance breakdown ──────────────────────────────────────────────────
   const myBreakdown = useMemo(() => {
-    const active = expenses.filter((e) => !e.isDeleted)
+    // Exclude contribution pool expenses — they're balance-engine entries, not "paid for others"
+    const active = expenses.filter((e) => !e.isDeleted && !e.isContribution)
 
     let iPaidForOthers = 0
     let othersPaidForMe = 0
@@ -104,6 +105,22 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
 
   const myBalance  = balances.find((b) => b.uid === currentUid)
   const allSettled = balances.every((b) => Math.abs(b.net) < 100)
+
+  // How much the current user has paid into the pool (their own contribution)
+  const myPoolContribution = useMemo(() => {
+    return expenses
+      .filter((e) => e.isContribution && !e.isDeleted && e.payments?.[currentUid])
+      .reduce((sum, e) => sum + (e.payments![currentUid] ?? 0), 0)
+  }, [expenses, currentUid])
+
+  // For the organiser: total pool money collected from ALL members (it's a liability they hold)
+  const isOrganiser = group.createdBy === currentUid
+  const poolCollectedByOrganiser = useMemo(() => {
+    if (!isOrganiser) return 0
+    return expenses
+      .filter((e) => e.isContribution && !e.isDeleted)
+      .reduce((sum, e) => sum + e.amount, 0)
+  }, [expenses, isOrganiser])
 
   function name(key: string) {
     if (key === currentUid) return 'You'
@@ -286,15 +303,39 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
                   {formatINR(Math.abs(myBalance.net))}
                 </p>
               </div>
+              {/* Organiser with a pool: show a plain-language context line above the breakdown */}
+              {isOrganiser && poolCollectedByOrganiser > 0 && (
+                <div className="mx-4 mb-2 px-3 py-2.5 rounded-sm bg-[rgba(124,107,248,0.06)] border border-[rgba(124,107,248,0.2)]">
+                  <p className="text-[#8E8E9A] text-[11px] leading-relaxed">
+                    You collected <span className="text-[#F2F2F7] font-medium">{formatINR(poolCollectedByOrganiser)}</span> in pool contributions and spent <span className="text-[#F2F2F7] font-medium">{formatINR(myBreakdown.iPaidForOthers + myPoolContribution)}</span> on expenses. Your balance reflects what you still owe back (or are owed).
+                  </p>
+                </div>
+              )}
+
               <div className="mx-4 mb-4 rounded-sm border border-[#2A2A32] bg-background divide-y divide-[#1A1A1F]">
-                <div className="flex items-center justify-between px-3 py-2.5">
-                  <span className="text-[#8E8E9A] text-xs">You paid for others</span>
-                  <span className="font-mono text-xs text-success font-medium">+{formatINR(myBreakdown.iPaidForOthers)}</span>
-                </div>
-                <div className="flex items-center justify-between px-3 py-2.5">
-                  <span className="text-[#8E8E9A] text-xs">Others paid for you</span>
-                  <span className="font-mono text-xs text-[#F87171] font-medium">-{formatINR(myBreakdown.othersPaidForMe)}</span>
-                </div>
+                  {/* Pool rows — organiser only: pool received is a liability */}
+                  {isOrganiser && poolCollectedByOrganiser > 0 && (
+                    <div className="flex items-center justify-between px-3 py-2.5">
+                      <span className="text-[#8E8E9A] text-xs">Pool collected from members</span>
+                      <span className="font-mono text-xs text-[#F87171] font-medium">-{formatINR(poolCollectedByOrganiser)}</span>
+                    </div>
+                  )}
+                  {/* Own pool contribution — everyone including organiser */}
+                  {myPoolContribution > 0 && (
+                    <div className="flex items-center justify-between px-3 py-2.5">
+                      <span className="text-[#8E8E9A] text-xs">Your pool contribution</span>
+                      <span className="font-mono text-xs text-success font-medium">+{formatINR(myPoolContribution)}</span>
+                    </div>
+                  )}
+                  {/* Regular expense rows — everyone including organiser */}
+                  <div className="flex items-center justify-between px-3 py-2.5">
+                    <span className="text-[#8E8E9A] text-xs">You paid for others</span>
+                    <span className="font-mono text-xs text-success font-medium">+{formatINR(myBreakdown.iPaidForOthers)}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-3 py-2.5">
+                    <span className="text-[#8E8E9A] text-xs">Others paid for you</span>
+                    <span className="font-mono text-xs text-[#F87171] font-medium">-{formatINR(myBreakdown.othersPaidForMe)}</span>
+                  </div>
                 <div className="flex items-center justify-between px-3 py-2.5">
                   <span className="text-[#8E8E9A] text-xs font-medium">Net</span>
                   <span className={`font-mono text-xs font-bold ${myBalance.net > 0 ? 'text-success' : 'text-[#F87171]'}`}>

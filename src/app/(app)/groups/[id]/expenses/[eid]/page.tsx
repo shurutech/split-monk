@@ -11,7 +11,7 @@ import { Expense, User } from '@/types'
 import { formatINR } from '@/lib/calculations'
 import { UserAvatar } from '@/components/ui/UserAvatar'
 import { EXPENSE_CATEGORIES } from '@/constants'
-import { ArrowLeft, Trash2, Loader2, Mail, Pencil } from 'lucide-react'
+import { ArrowLeft, Trash2, Loader2, Mail, Pencil, Wallet } from 'lucide-react'
 
 function isPendingKey(key: string) { return key.includes('@') }
 import { toast } from 'sonner'
@@ -39,20 +39,21 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
       if (!snap.exists()) { setExpense(null); return }
       const d = snap.data()
       setExpense({
-        id:        snap.id,
-        title:     d.title,
-        amount:    d.amount,
-        paidBy:    d.paidBy,
-        payments:  d.payments ?? undefined,
-        splitType: d.splitType,
-        splits:    d.splits,
-        date:      tsToDate(d.date),
-        notes:     d.notes,
-        category:  d.category,
-        createdBy: d.createdBy,
-        createdAt: tsToDate(d.createdAt),
-        updatedAt: tsToDate(d.updatedAt),
-        isDeleted: d.isDeleted,
+        id:             snap.id,
+        title:          d.title,
+        amount:         d.amount,
+        paidBy:         d.paidBy,
+        payments:       d.payments ?? undefined,
+        splitType:      d.splitType,
+        splits:         d.splits,
+        date:           tsToDate(d.date),
+        notes:          d.notes,
+        category:       d.category,
+        createdBy:      d.createdBy,
+        createdAt:      tsToDate(d.createdAt),
+        updatedAt:      tsToDate(d.updatedAt),
+        isDeleted:      d.isDeleted,
+        isContribution: d.isContribution ?? false,
       })
     }, () => {})  // swallow permission-denied during invite resolution
   }, [id, eid])
@@ -156,9 +157,24 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
         )}
       </div>
 
+      {/* Contribution pool banner */}
+      {expense.isContribution && (
+        <div className="flex items-start gap-3 px-4 py-3 rounded-sm border border-[rgba(124,107,248,0.3)] bg-[rgba(124,107,248,0.06)]">
+          <Wallet size={15} className="text-[#7C6BF8] shrink-0 mt-0.5" />
+          <div>
+            <p className="text-[#7C6BF8] text-xs font-semibold">Trip pool contribution</p>
+            <p className="text-faint text-xs mt-0.5">
+              Members transferred funds to the organiser. This is recorded as a pool contribution — not a regular expense.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Split breakdown */}
       <div>
-        <p className="text-[#8E8E9A] text-xs uppercase tracking-wide mb-3">Split breakdown</p>
+        <p className="text-[#8E8E9A] text-xs uppercase tracking-wide mb-3">
+          {expense.isContribution ? 'Collected from' : 'Split breakdown'}
+        </p>
         <div className="space-y-2">
           {Object.entries(expense.splits).map(([key, share]) => (
             <div key={key} className="flex items-center gap-3 py-2.5 px-3 rounded-sm border border-[#2A2A32] bg-[#111113]">

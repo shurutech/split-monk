@@ -11,12 +11,13 @@ export const GROUP_COLORS = [
 ]
 
 export const EXPENSE_CATEGORIES = [
-  { value: 'food',      label: 'Food',      icon: 'Utensils' },
-  { value: 'stay',      label: 'Stay',      icon: 'Hotel' },
-  { value: 'transport', label: 'Transport', icon: 'Car' },
-  { value: 'activity',  label: 'Activity',  icon: 'Target' },
-  { value: 'shopping',  label: 'Shopping',  icon: 'ShoppingBag' },
-  { value: 'other',     label: 'Other',     icon: 'MoreHorizontal' },
+  { value: 'food',         label: 'Food',         icon: 'Utensils' },
+  { value: 'stay',         label: 'Stay',         icon: 'Hotel' },
+  { value: 'transport',    label: 'Transport',    icon: 'Car' },
+  { value: 'activity',     label: 'Activity',     icon: 'Target' },
+  { value: 'shopping',     label: 'Shopping',     icon: 'ShoppingBag' },
+  { value: 'other',        label: 'Other',        icon: 'MoreHorizontal' },
+  { value: 'contribution', label: 'Contribution', icon: 'Wallet' },
 ] as const
 
 export const MAX_GROUP_NAME_LENGTH = 50

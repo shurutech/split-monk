@@ -45,14 +45,20 @@ service cloud.firestore {
 
       // Expenses subcollection
       match /expenses/{expenseId} {
-        allow read:  if isMemberOrPending();
-        allow write: if request.auth.uid in
+        allow read:          if isMemberOrPending();
+        // Members can create/update (soft-delete via isDeleted flag) — but NOT hard-delete
+        allow create, update: if request.auth.uid in
           get(/databases/$(database)/documents/groups/$(groupId)).data.members;
+        // Only the group creator can hard-delete (only used when wiping the whole group)
+        allow delete:        if request.auth.uid ==
+          get(/databases/$(database)/documents/groups/$(groupId)).data.createdBy;
       }
 
-      // Settlements subcollection
+      // Settlements subcollection — append-only during normal use; only creator can delete on group wipe
       match /settlements/{settlementId} {
         allow read, create: if isMemberOrPending();
+        allow delete:       if request.auth.uid ==
+          get(/databases/$(database)/documents/groups/$(groupId)).data.createdBy;
       }
     }
   }

@@ -61,36 +61,38 @@ function docToUser(id: string, data: Record<string, unknown>): User {
 function docToGroup(id: string, data: Record<string, unknown>): Group {
   return {
     id,
-    name:           data.name as string,
-    description:    data.description as string | undefined,
-    createdBy:      data.createdBy as string,
-    members:        data.members as string[],
-    pendingInvites: (data.pendingInvites as string[] | undefined) ?? [],
-    startDate:      data.startDate ? tsToDate(data.startDate) : undefined,
-    endDate:        data.endDate   ? tsToDate(data.endDate)   : undefined,
-    status:         data.status as Group['status'],
-    totalSpend:     data.totalSpend as number,
-    createdAt:      tsToDate(data.createdAt),
-    coverColor:     data.coverColor as string,
+    name:               data.name as string,
+    description:        data.description as string | undefined,
+    createdBy:          data.createdBy as string,
+    members:            data.members as string[],
+    pendingInvites:     (data.pendingInvites as string[] | undefined) ?? [],
+    startDate:          data.startDate ? tsToDate(data.startDate) : undefined,
+    endDate:            data.endDate   ? tsToDate(data.endDate)   : undefined,
+    status:             data.status as Group['status'],
+    totalSpend:         data.totalSpend as number,
+    createdAt:          tsToDate(data.createdAt),
+    coverColor:         data.coverColor as string,
+    contributionAmount: data.contributionAmount as number | undefined,
   }
 }
 
 function docToExpense(id: string, data: Record<string, unknown>): Expense {
   return {
     id,
-    title:     data.title as string,
-    amount:    data.amount as number,
-    paidBy:    data.paidBy as string,
-    payments:  data.payments as Record<string, number> | undefined,
-    splitType: data.splitType as Expense['splitType'],
-    splits:    data.splits as Record<string, number>,
-    date:      tsToDate(data.date),
-    notes:     data.notes as string | undefined,
-    category:  data.category as Expense['category'],
-    createdBy: data.createdBy as string,
-    createdAt: tsToDate(data.createdAt),
-    updatedAt: tsToDate(data.updatedAt),
-    isDeleted: data.isDeleted as boolean,
+    title:          data.title as string,
+    amount:         data.amount as number,
+    paidBy:         data.paidBy as string,
+    payments:       data.payments as Record<string, number> | undefined,
+    splitType:      data.splitType as Expense['splitType'],
+    splits:         data.splits as Record<string, number>,
+    date:           tsToDate(data.date),
+    notes:          data.notes as string | undefined,
+    category:       data.category as Expense['category'],
+    createdBy:      data.createdBy as string,
+    createdAt:      tsToDate(data.createdAt),
+    updatedAt:      tsToDate(data.updatedAt),
+    isDeleted:      data.isDeleted as boolean,
+    isContribution: (data.isContribution as boolean | undefined) ?? false,
   }
 }
 
@@ -276,9 +278,10 @@ export async function updateGroup(
   data: Partial<Omit<Group, 'startDate' | 'endDate'>> & { startDate?: Date | null; endDate?: Date | null },
 ): Promise<void> {
   const payload: Record<string, unknown> = { ...data }
-  // null means clear the field — use Firestore's deleteField() sentinel
-  if (data.startDate === null) payload.startDate = deleteField()
-  if (data.endDate   === null) payload.endDate   = deleteField()
+  // null/undefined means clear the field — use Firestore's deleteField() sentinel
+  if (data.startDate          === null)      payload.startDate          = deleteField()
+  if (data.endDate            === null)      payload.endDate            = deleteField()
+  if (data.contributionAmount === undefined) payload.contributionAmount = deleteField()
   await updateDoc(doc(db, 'groups', groupId), payload)
 }
 
@@ -404,21 +407,24 @@ export async function addExpense(groupId: string, data: AddExpenseInput): Promis
     const groupSnap = await tx.get(groupRef)
 
     tx.set(expRef, {
-      title:     data.title,
-      amount:    data.amount,
-      paidBy:    data.payments ? 'multiple' : data.paidBy,
+      title:          data.title,
+      amount:         data.amount,
+      paidBy:         data.payments ? 'multiple' : data.paidBy,
       ...(data.payments ? { payments: data.payments } : {}),
-      splitType: data.splitType,
-      splits:    data.splits,
-      date:      Timestamp.fromDate(data.date),
-      notes:     data.notes ?? '',
-      category:  data.category,
-      createdBy: data.createdBy,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      isDeleted: false,
+      splitType:      data.splitType,
+      splits:         data.splits,
+      date:           Timestamp.fromDate(data.date),
+      notes:          data.notes ?? '',
+      category:       data.category,
+      createdBy:      data.createdBy,
+      createdAt:      serverTimestamp(),
+      updatedAt:      serverTimestamp(),
+      isDeleted:      false,
+      ...(data.isContribution ? { isContribution: true } : {}),
     })
-    const updates: Record<string, unknown> = { totalSpend: increment(data.amount) }
+    const updates: Record<string, unknown> = {}
+    // Contribution pool expenses are not real spending — don't increment totalSpend counter
+    if (!data.isContribution) updates.totalSpend = increment(data.amount)
     if (groupSnap.exists() && groupSnap.data().status === 'settled') {
       updates.status = 'active'
     }
@@ -440,8 +446,10 @@ export async function updateExpense(
   await runTransaction(db, async (tx) => {
     const expSnap = await tx.get(expRef)
     if (!expSnap.exists()) throw new Error('Expense not found')
-    const oldAmount = (expSnap.data() as { amount: number }).amount
-    const amountDiff = data.amount - oldAmount
+    const expData        = expSnap.data() as { amount: number; isContribution?: boolean }
+    const oldAmount      = expData.amount
+    const isContribution = expData.isContribution ?? false
+    const amountDiff     = data.amount - oldAmount
 
     tx.update(expRef, {
       title:     data.title,
@@ -457,7 +465,8 @@ export async function updateExpense(
       updatedAt: serverTimestamp(),
     })
 
-    if (amountDiff !== 0) {
+    // Contribution expenses never touched totalSpend, so don't adjust it on edit either
+    if (amountDiff !== 0 && !isContribution) {
       tx.update(groupRef, { totalSpend: increment(amountDiff) })
     }
   })
@@ -468,11 +477,14 @@ export async function softDeleteExpense(groupId: string, expenseId: string): Pro
   const expSnap  = await getDoc(expRef)
   if (!expSnap.exists()) return
 
-  const amount = (expSnap.data() as { amount: number }).amount
+  const data           = expSnap.data() as { amount: number; isContribution?: boolean }
+  const amount         = data.amount
+  const isContribution = data.isContribution ?? false
 
   await runTransaction(db, async (tx) => {
     tx.update(expRef, { isDeleted: true, updatedAt: serverTimestamp() })
-    tx.update(doc(db, 'groups', groupId), { totalSpend: increment(-amount) })
+    // Only decrement totalSpend for real expenses (contributions never incremented it)
+    if (!isContribution) tx.update(doc(db, 'groups', groupId), { totalSpend: increment(-amount) })
   })
 }
 
