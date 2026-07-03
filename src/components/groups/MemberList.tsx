@@ -7,7 +7,7 @@ import { getUserById, getUserByEmail, removeGroupMember, removePendingInvite } f
 import { db } from '@/lib/firebase'
 import { doc, updateDoc, arrayUnion, writeBatch } from 'firebase/firestore'
 import { UserAvatar } from '@/components/ui/UserAvatar'
-import { Crown, Mail, Clock, UserPlus, Loader2, X, LogOut, UserMinus } from 'lucide-react'
+import { Crown, Mail, Clock, UserPlus, Loader2, X, LogOut, UserMinus, Copy, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import type { InvitePayload } from '@/app/api/invite/route'
 
@@ -36,6 +36,7 @@ export function MemberList({
   const [adding,        setAdding]        = useState(false)
   // uid or email string being removed; null = none in progress
   const [removing,      setRemoving]      = useState<string | null>(null)
+  const [copiedUpi,     setCopiedUpi]     = useState<string | null>(null)
   // pending confirm: uid (member) or email (pending invite)
   const [confirmTarget, setConfirmTarget] = useState<string | null>(null)
 
@@ -190,6 +191,25 @@ export function MemberList({
                 {isSelf && <span className="text-faint text-xs ml-1">(you)</span>}
               </p>
               <p className="text-faint text-xs truncate">{u?.email ?? uid}</p>
+              {u?.upiId && (
+                <div className="flex items-center gap-1 mt-0.5">
+                  <span className="text-[#8E8E9A] text-[11px] font-mono truncate">{u.upiId}</span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(u.upiId!)
+                      setCopiedUpi(uid)
+                      setTimeout(() => setCopiedUpi(null), 2000)
+                    }}
+                    className="shrink-0 text-faint hover:text-[#7C6BF8] transition-colors"
+                    title="Copy UPI ID"
+                  >
+                    {copiedUpi === uid
+                      ? <Check size={11} className="text-success" />
+                      : <Copy size={11} />
+                    }
+                  </button>
+                </div>
+              )}
             </div>
 
             {isCreator && (
