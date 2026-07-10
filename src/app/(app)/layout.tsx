@@ -9,7 +9,7 @@ import { BottomNav } from '@/components/layout/BottomNav'
 import { PWAInstallPrompt } from '@/components/ui/PWAInstallPrompt'
 import { UPIPrompt } from '@/components/ui/UPIPrompt'
 import { NotificationPermissionPrompt } from '@/components/ui/NotificationPermissionPrompt'
-import { ensureToken } from '@/lib/notifications'
+import { ensureSubscription } from '@/lib/notifications'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuthContext()
@@ -30,7 +30,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
     navigator.serviceWorker.register('/firebase-messaging-sw.js').then(() => {
       // If permission already granted (e.g. returning user), ensure token is saved
-      if (user) ensureToken(user.uid).catch(() => {})
+      if (user) ensureSubscription(user.uid).catch(() => {})
     }).catch((err) => {
       console.warn('[SW] registration failed:', err)
     })

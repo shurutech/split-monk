@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Bell, X } from 'lucide-react'
-import { requestPermission, saveToken } from '@/lib/notifications'
+import { requestPermission, saveSubscription } from '@/lib/notifications'
 
 interface Props {
   uid:        string
@@ -51,8 +51,8 @@ export function NotificationPermissionPrompt({ uid, groupCount }: Props) {
       /* ignore */
     }
     setVisible(false)
-    const token = await requestPermission()
-    if (token) await saveToken(uid, token)
+    const sub = await requestPermission()
+    if (sub) await saveSubscription(uid, sub)
   }
 
   return (
