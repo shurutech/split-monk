@@ -5,6 +5,7 @@ import { X, Wallet, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { addExpense } from '@/lib/firestore'
 import { formatINR } from '@/lib/calculations'
+import { notifyGroup } from '@/lib/notify'
 import type { Group, User } from '@/types'
 
 interface Props {
@@ -85,6 +86,21 @@ export function RecordContributionsSheet({ open, onClose, group, members, paidMa
         createdBy:      currentUid,
         isContribution: true,
       })
+
+      // Notify each contributor — fire-and-forget
+      const contributorUids = Object.keys(payments).filter((uid) => uid !== currentUid)
+      if (contributorUids.length > 0) {
+        notifyGroup({
+          type:       'contribution_recorded',
+          groupId:    group.id,
+          groupName:  group.name,
+          actorUid:   currentUid,
+          targetUids: contributorUids,
+          title:      'Pool contribution recorded',
+          body:       `Your ${formatINR(perPerson)} contribution to ${group.name} was recorded`,
+          url:        `/groups/${group.id}`,
+        })
+      }
 
       toast.success(`Recorded ${formatINR(total)} pool contribution`)
       onClose()

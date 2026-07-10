@@ -4,6 +4,7 @@ export interface User {
   displayName: string
   photoURL: string
   upiId?: string
+  fcmTokens?: string[]  // FCM push tokens per device; managed client-side
   createdAt: Date
   lastActiveAt: Date
 }

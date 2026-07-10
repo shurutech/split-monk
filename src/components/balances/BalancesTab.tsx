@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Balance, Expense, Group, Settlement, SettlementSuggestion, User } from '@/types'
 import { formatINR } from '@/lib/calculations'
 import { getUserById, recordSettlement } from '@/lib/firestore'
+import { notifyGroup } from '@/lib/notify'
 import { UserAvatar } from '@/components/ui/UserAvatar'
 import { ArrowRight, CheckCircle2, Loader2, Mail, History, Smartphone, ChevronDown, ChevronUp, Copy, Bell, BellRing } from 'lucide-react'
 import { toast } from 'sonner'
@@ -158,6 +159,19 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
         group.pendingInvites ?? [],
       )
       setNoteInput((prev) => { const n = { ...prev }; delete n[key]; return n })
+
+      // Notify the receiver — fire-and-forget
+      notifyGroup({
+        type:       'settlement_recorded',
+        groupId:    group.id,
+        groupName:  group.name,
+        actorUid:   currentUid,
+        targetUids: [s.to],
+        title:      `${name(s.from)} paid you`,
+        body:       `${formatINR(s.amount)} · ${group.name}`,
+        url:        `/groups/${group.id}`,
+      })
+
       toast.success('Settlement recorded')
     } catch {
       toast.error('Failed to record settlement')

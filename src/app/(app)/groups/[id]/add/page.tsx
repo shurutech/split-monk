@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuthContext } from '@/components/auth/AuthProvider'
 import { useGroup } from '@/hooks/useGroup'
 import { getAllUsers, addExpense } from '@/lib/firestore'
+import { notifyGroup } from '@/lib/notify'
 import {
   toPaise, formatINR,
   calculateEqualSplit, calculateExactSplit, calculatePercentageSplit,
@@ -208,6 +209,22 @@ export default function AddExpensePage({ params }: { params: Promise<{ id: strin
         category,
         createdBy: user.uid,
       })
+
+      // Notify all other members — fire-and-forget
+      if (group) {
+        const otherMembers = group.members.filter((uid) => uid !== user.uid)
+        notifyGroup({
+          type:       'expense_added',
+          groupId:    id,
+          groupName:  group.name,
+          actorUid:   user.uid,
+          targetUids: otherMembers,
+          title:      `New expense in ${group.name}`,
+          body:       `${(user.displayName ?? user.email ?? 'Someone').split(' ')[0]} added ${title.trim()} · ${formatINR(amountPaise)}`,
+          url:        `/groups/${id}`,
+        })
+      }
+
       toast.success('Expense added!')
       router.push(`/groups/${id}`)
     } catch (err) {

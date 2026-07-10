@@ -3,14 +3,18 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthContext } from '@/components/auth/AuthProvider'
+import { useUserGroups } from '@/hooks/useGroup'
 import { Navbar } from '@/components/layout/Navbar'
 import { BottomNav } from '@/components/layout/BottomNav'
 import { PWAInstallPrompt } from '@/components/ui/PWAInstallPrompt'
 import { UPIPrompt } from '@/components/ui/UPIPrompt'
+import { NotificationPermissionPrompt } from '@/components/ui/NotificationPermissionPrompt'
+import { ensureToken } from '@/lib/notifications'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuthContext()
   const router            = useRouter()
+  const { groups }        = useUserGroups(user?.uid)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -19,6 +23,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       router.replace(redirect)
     }
   }, [user, loading, router])
+
+  // Register service worker + handle deep-link navigation messages from SW (notification click)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
+
+    navigator.serviceWorker.register('/sw.js').then(() => {
+      // If permission already granted (e.g. returning user), ensure token is saved
+      if (user) ensureToken(user.uid).catch(() => {})
+    }).catch((err) => {
+      console.warn('[SW] registration failed:', err)
+    })
+
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === 'NAVIGATE' && e.data?.url) router.push(e.data.url)
+    }
+    navigator.serviceWorker.addEventListener('message', handler)
+    return () => navigator.serviceWorker.removeEventListener('message', handler)
+  }, [router, user?.uid]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return (
@@ -39,6 +61,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <BottomNav />
       <PWAInstallPrompt />
       <UPIPrompt />
+      <NotificationPermissionPrompt uid={user.uid} groupCount={groups.length} />
     </div>
   )
 }
