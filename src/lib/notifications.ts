@@ -5,23 +5,29 @@ import { doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore'
 import app, { db } from '@/lib/firebase'
 
 const VAPID_KEY = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY!
+const SW_PATH   = '/firebase-messaging-sw.js'
+
+async function getSwRegistration(): Promise<ServiceWorkerRegistration> {
+  // Prefer the firebase-messaging-sw.js registration; fall back to whatever is ready
+  const regs = await navigator.serviceWorker.getRegistrations()
+  const fmSw = regs.find((r) => r.active?.scriptURL.includes('firebase-messaging-sw'))
+  if (fmSw) return fmSw
+  return navigator.serviceWorker.register(SW_PATH)
+}
 
 async function getFcmToken(): Promise<string | null> {
-  const sw  = await navigator.serviceWorker.ready
+  const sw  = await getSwRegistration()
   const msg = getMessaging(app)
   try {
     const token = await getToken(msg, { vapidKey: VAPID_KEY, serviceWorkerRegistration: sw })
     return token ?? null
   } catch (err: unknown) {
-    // Stale push subscription — clear it and retry once
     const code = (err as { code?: string })?.code ?? ''
     if (code === 'messaging/token-subscribe-failed' || code === 'messaging/token-unsubscribe-failed') {
-      console.warn('[notifications] stale subscription, clearing and retrying...')
+      // Clear stale push subscription and retry once
       try { await deleteToken(msg) } catch { /* ignore */ }
-      // Also clear any existing browser push subscriptions
       const sub = await sw.pushManager.getSubscription()
       if (sub) await sub.unsubscribe()
-      // Retry once with a clean slate
       const token = await getToken(msg, { vapidKey: VAPID_KEY, serviceWorkerRegistration: sw })
       return token ?? null
     }

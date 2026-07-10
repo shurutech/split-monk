@@ -28,7 +28,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
 
-    navigator.serviceWorker.register('/sw.js').then(() => {
+    navigator.serviceWorker.register('/firebase-messaging-sw.js').then(() => {
       // If permission already granted (e.g. returning user), ensure token is saved
       if (user) ensureToken(user.uid).catch(() => {})
     }).catch((err) => {
