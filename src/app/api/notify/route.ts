@@ -4,11 +4,14 @@ import { getAuth } from 'firebase-admin/auth'
 import { FieldValue } from 'firebase-admin/firestore'
 import { getAdminApp, getAdminDb } from '@/lib/firebase-admin'
 
-webpush.setVapidDetails(
-  process.env.WEB_PUSH_CONTACT!,
-  process.env.NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY!,
-  process.env.WEB_PUSH_PRIVATE_KEY!,
-)
+function getWebPush() {
+  webpush.setVapidDetails(
+    process.env.WEB_PUSH_CONTACT!,
+    process.env.NEXT_PUBLIC_WEB_PUSH_PUBLIC_KEY!,
+    process.env.WEB_PUSH_PRIVATE_KEY!,
+  )
+  return webpush
+}
 
 interface NotifyRequest {
   secret?:    string
@@ -80,7 +83,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       for (const raw of subs) {
         try {
           const sub = JSON.parse(raw) as webpush.PushSubscription
-          await webpush.sendNotification(sub, notificationPayload)
+          await getWebPush().sendNotification(sub, notificationPayload)
           sent++
         } catch (err: unknown) {
           const status = (err as { statusCode?: number })?.statusCode
