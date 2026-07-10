@@ -11,8 +11,8 @@ export function getAdminApp() {
     credential: cert({
       projectId:   process.env.FIREBASE_ADMIN_PROJECT_ID!,
       clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL!,
-      // Vercel stores env vars with literal \n sequences — expand them
-      privateKey:  (process.env.FIREBASE_ADMIN_PRIVATE_KEY ?? '').replace(/\\n/g, '\n'),
+      // Stored as base64 on Vercel to avoid newline mangling
+      privateKey:  Buffer.from(process.env.FIREBASE_ADMIN_PRIVATE_KEY_B64 ?? '', 'base64').toString('utf8'),
     }),
   })
 }
