@@ -1,6 +1,7 @@
 'use client'
 
 import { getAuth } from 'firebase/auth'
+import app from '@/lib/firebase'
 
 export interface NotifyPayload {
   type:       string
@@ -18,7 +19,7 @@ export interface NotifyPayload {
 export async function notifyGroup(payload: NotifyPayload): Promise<void> {
   if (payload.targetUids.length === 0) return
   try {
-    const user    = getAuth().currentUser
+    const user    = getAuth(app).currentUser
     if (!user) return
     const idToken = await user.getIdToken()
 
