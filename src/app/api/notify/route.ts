@@ -37,6 +37,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // Accept either: internal secret (Cloud Tasks) or a valid Firebase ID token (client)
   const internalSecret = process.env.NOTIFY_INTERNAL_SECRET
   const validSecret    = internalSecret && payload.secret === internalSecret
+  console.log('[notify] secret match:', validSecret, '| idToken present:', !!payload.idToken, '| actorUid:', payload.actorUid)
 
   if (!validSecret) {
     if (!payload.idToken) {
@@ -45,9 +46,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     try {
       const decoded = await getAuth(getAdminApp()).verifyIdToken(payload.idToken)
       if (decoded.uid !== payload.actorUid) {
+        console.error('[notify] uid mismatch decoded:', decoded.uid, 'actor:', payload.actorUid)
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       }
-    } catch {
+    } catch (err) {
+      console.error('[notify] verifyIdToken failed:', err)
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
   }
