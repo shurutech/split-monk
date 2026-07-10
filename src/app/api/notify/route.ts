@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { adminMessaging, adminDb } from '@/lib/firebase-admin'
+import { getAdminApp, getAdminMessaging, getAdminDb } from '@/lib/firebase-admin'
 import { getAuth } from 'firebase-admin/auth'
-import { adminApp } from '@/lib/firebase-admin'
 import { FieldValue } from 'firebase-admin/firestore'
 
 interface NotifyRequest {
@@ -35,7 +34,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     try {
-      const decoded = await getAuth(adminApp).verifyIdToken(payload.idToken)
+      const decoded = await getAuth(getAdminApp()).verifyIdToken(payload.idToken)
       // Verify the actorUid matches the token — prevents spoofing
       if (decoded.uid !== payload.actorUid) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -50,6 +49,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!targetUids?.length || !title || !body) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
+
+  const adminDb = getAdminDb()
 
   // Fetch FCM tokens for all target users in parallel
   const userDocs = await Promise.all(
@@ -72,7 +73,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // Send multicast push
-  const result = await adminMessaging.sendEachForMulticast({
+  const result = await getAdminMessaging().sendEachForMulticast({
     tokens,
     notification: { title, body },
     webpush: {
