@@ -73,7 +73,7 @@ export function ContributionPoolCard({ group, expenses, members, currentUid }: P
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {isOrganiser && group.status !== 'archived' && (
+            {isOrganiser && group.status !== 'archived' && group.status !== 'closed' && (
               <button
                 onClick={() => setSheetOpen(true)}
                 className="px-2.5 py-1.5 rounded-sm bg-[#7C6BF8] text-white text-xs font-medium hover:bg-[#6B5CE7] transition-colors"

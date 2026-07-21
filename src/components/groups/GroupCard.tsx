@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Group } from '@/types'
 import { formatINR } from '@/lib/calculations'
-import { Users, CheckCircle, Archive } from 'lucide-react'
+import { Users, CheckCircle, Archive, Lock } from 'lucide-react'
 
 interface Props {
   group: Group
@@ -13,6 +13,7 @@ interface Props {
 export function GroupCard({ group, currentUid }: Props) {
   const isSettled  = group.status === 'settled'
   const isArchived = group.status === 'archived'
+  const isClosed   = group.status === 'closed'
 
   return (
     <Link
@@ -35,6 +36,11 @@ export function GroupCard({ group, currentUid }: Props) {
         {isArchived && (
           <span className="flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#1A1A1F] text-[#8E8E9A] text-[10px] font-medium">
             <Archive size={10} /> Archived
+          </span>
+        )}
+        {isClosed && (
+          <span className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full bg-[rgba(239,68,68,0.1)] text-[#EF4444] text-[10px] font-medium">
+            <Lock size={10} /> Closed
           </span>
         )}
       </div>

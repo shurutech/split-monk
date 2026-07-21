@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Settings, Loader2, Trash2, Archive, Check, Wallet } from 'lucide-react'
+import { X, Settings, Loader2, Trash2, Archive, Check, Wallet, Lock, LockOpen } from 'lucide-react'
 import { toast } from 'sonner'
-import { updateGroup, archiveGroup, deleteGroup } from '@/lib/firestore'
+import { updateGroup, archiveGroup, closeGroup, reopenGroup, deleteGroup } from '@/lib/firestore'
 import { GROUP_COLORS, MAX_GROUP_NAME_LENGTH } from '@/constants'
 import { formatINR } from '@/lib/calculations'
 import type { Group, Expense, Balance } from '@/types'
@@ -36,6 +36,7 @@ export function GroupSettingsSheet({ open, onClose, group, expenses, balances }:
   )
   const [saving,             setSaving]             = useState(false)
   const [archiving,          setArchiving]          = useState(false)
+  const [closing,            setClosing]            = useState(false)
   const [deleteState,        setDeleteState]        = useState<DeleteState>('idle')
 
   // Reset form whenever the sheet opens with fresh group data
@@ -116,6 +117,32 @@ export function GroupSettingsSheet({ open, onClose, group, expenses, balances }:
       toast.error('Failed to archive trip')
     } finally {
       setArchiving(false)
+    }
+  }
+
+  async function handleClose() {
+    setClosing(true)
+    try {
+      await closeGroup(group.id)
+      toast.success('Trip closed — no more expenses can be added')
+      onClose()
+    } catch {
+      toast.error('Failed to close trip')
+    } finally {
+      setClosing(false)
+    }
+  }
+
+  async function handleReopen() {
+    setClosing(true)
+    try {
+      await reopenGroup(group.id)
+      toast.success('Trip re-opened')
+      onClose()
+    } catch {
+      toast.error('Failed to re-open trip')
+    } finally {
+      setClosing(false)
     }
   }
 
@@ -273,6 +300,38 @@ export function GroupSettingsSheet({ open, onClose, group, expenses, balances }:
           {/* ── Organiser actions ─────────────────────────────────────────── */}
           <section className="space-y-2.5">
             <p className="text-faint text-[10px] uppercase tracking-wider mb-3">Actions</p>
+
+            {/* Close trip */}
+            {(group.status === 'active' || group.status === 'settled') && (
+              <button
+                onClick={handleClose}
+                disabled={closing}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-sm border border-[rgba(239,68,68,0.3)] bg-[#1A1A1F] text-[#EF4444] hover:border-[rgba(239,68,68,0.6)] hover:bg-[rgba(239,68,68,0.05)] transition-colors disabled:opacity-50"
+              >
+                {closing
+                  ? <Loader2 size={15} className="animate-spin shrink-0" />
+                  : <Lock size={15} className="shrink-0" />
+                }
+                <span className="text-sm font-medium">Close trip</span>
+                <span className="ml-auto text-[10px] text-faint">Locks expenses permanently</span>
+              </button>
+            )}
+
+            {/* Re-open closed trip */}
+            {group.status === 'closed' && (
+              <button
+                onClick={handleReopen}
+                disabled={closing}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-sm border border-[rgba(52,211,153,0.3)] bg-[#1A1A1F] text-[#34D399] hover:border-[rgba(52,211,153,0.6)] hover:bg-[rgba(52,211,153,0.05)] transition-colors disabled:opacity-50"
+              >
+                {closing
+                  ? <Loader2 size={15} className="animate-spin shrink-0" />
+                  : <LockOpen size={15} className="shrink-0" />
+                }
+                <span className="text-sm font-medium">Re-open trip</span>
+                <span className="ml-auto text-[10px] text-faint">Allow new expenses again</span>
+              </button>
+            )}
 
             {/* Archive */}
             {group.status === 'active' && (

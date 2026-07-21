@@ -18,7 +18,7 @@ export interface Group {
   pendingInvites: string[]    // emails awaiting first sign-in
   startDate?: Date
   endDate?: Date
-  status: 'active' | 'settled' | 'archived'
+  status: 'active' | 'settled' | 'archived' | 'closed'
   totalSpend: number
   createdAt: Date
   coverColor: string

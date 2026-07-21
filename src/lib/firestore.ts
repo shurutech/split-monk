@@ -289,6 +289,14 @@ export async function archiveGroup(groupId: string): Promise<void> {
   await updateDoc(doc(db, 'groups', groupId), { status: 'archived' })
 }
 
+export async function closeGroup(groupId: string): Promise<void> {
+  await updateDoc(doc(db, 'groups', groupId), { status: 'closed' })
+}
+
+export async function reopenGroup(groupId: string): Promise<void> {
+  await updateDoc(doc(db, 'groups', groupId), { status: 'active' })
+}
+
 // Hard delete — cleans up subcollections and invite docs.
 // Firestore does not cascade-delete subcollections automatically.
 export async function deleteGroup(groupId: string): Promise<void> {

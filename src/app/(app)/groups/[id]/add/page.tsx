@@ -235,6 +235,35 @@ export default function AddExpensePage({ params }: { params: Promise<{ id: strin
     }
   }
 
+  // Closed group — block expense entry with a friendly meme screen
+  if (group?.status === 'closed') {
+    return (
+      <div className="max-w-lg mx-auto pb-10 flex flex-col items-center justify-center min-h-[60vh] text-center gap-6">
+        <button onClick={() => router.back()} className="self-start text-[#8E8E9A] hover:text-[#F2F2F7] transition-colors">
+          <ArrowLeft size={20} />
+        </button>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/trip-closed-meme.jpg"
+          alt="Bahute Badhiya — Ee lo Jamun Khao"
+          className="w-64 rounded-xl shadow-lg mx-auto"
+        />
+        <div className="space-y-2">
+          <p className="text-[#F2F2F7] font-semibold text-lg">Bhai trip band ho gayi! 🔒</p>
+          <p className="text-[#8E8E9A] text-sm max-w-xs mx-auto">
+            Organiser ne taala laga diya. Ab koi naya expense nahi daal sakte. Kha lo Jamun! 🫐
+          </p>
+        </div>
+        <button
+          onClick={() => router.back()}
+          className="px-6 py-2.5 rounded-sm bg-[#1A1A1F] border border-[#2A2A32] text-[#8E8E9A] hover:text-[#F2F2F7] hover:border-[#3A3A44] transition-colors text-sm"
+        >
+          Wapas jao
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-lg mx-auto pb-36 md:pb-10">
 
