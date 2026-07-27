@@ -14,7 +14,7 @@ import {
 import { EXPENSE_CATEGORIES, MAX_EXPENSE_AMOUNT_PAISE, MIN_EXPENSE_AMOUNT_PAISE } from '@/constants'
 import { User, Expense } from '@/types'
 import { UserAvatar } from '@/components/ui/UserAvatar'
-import { ArrowLeft, Check, Loader2, Utensils, Hotel, Car, Target, ShoppingBag, MoreHorizontal, Mail } from 'lucide-react'
+import { ArrowLeft, Check, Loader2, Utensils, Hotel, Car, Target, ShoppingBag, MoreHorizontal, Mail, Lock } from 'lucide-react'
 import { toast } from 'sonner'
 
 const SPLIT_TYPES = ['equal', 'exact', 'percentage'] as const
@@ -206,6 +206,31 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
       <div className="max-w-lg mx-auto space-y-4">
         <div className="h-6 w-32 bg-[#1A1A1F] rounded animate-pulse" />
         <div className="h-40 bg-[#1A1A1F] rounded animate-pulse" />
+      </div>
+    )
+  }
+
+  if (group?.status === 'closed') {
+    return (
+      <div className="max-w-lg mx-auto pb-10 flex flex-col items-center justify-center min-h-[60vh] text-center gap-6">
+        <button onClick={() => router.back()} className="self-start text-[#8E8E9A] hover:text-[#F2F2F7] transition-colors">
+          <ArrowLeft size={20} />
+        </button>
+        <div className="w-16 h-16 rounded-full bg-[rgba(239,68,68,0.1)] flex items-center justify-center">
+          <Lock size={28} className="text-[#EF4444]" />
+        </div>
+        <div className="space-y-2">
+          <p className="text-[#F2F2F7] font-semibold text-lg">Trip band ho gayi! 🔒</p>
+          <p className="text-[#8E8E9A] text-sm max-w-xs mx-auto">
+            Closed trip mein expenses edit nahi ho sakte. Organiser trip re-open kare.
+          </p>
+        </div>
+        <button
+          onClick={() => router.back()}
+          className="px-6 py-2.5 rounded-sm bg-[#1A1A1F] border border-[#2A2A32] text-[#8E8E9A] hover:text-[#F2F2F7] hover:border-[#3A3A44] transition-colors text-sm"
+        >
+          Wapas jao
+        </button>
       </div>
     )
   }
