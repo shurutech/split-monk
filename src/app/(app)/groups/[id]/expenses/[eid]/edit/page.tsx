@@ -14,7 +14,7 @@ import {
 import { EXPENSE_CATEGORIES, MAX_EXPENSE_AMOUNT_PAISE, MIN_EXPENSE_AMOUNT_PAISE } from '@/constants'
 import { User, Expense } from '@/types'
 import { UserAvatar } from '@/components/ui/UserAvatar'
-import { ArrowLeft, Check, Loader2, Utensils, Hotel, Car, Target, ShoppingBag, MoreHorizontal, Mail, Lock } from 'lucide-react'
+import { ArrowLeft, Check, Loader2, Utensils, Hotel, Car, Target, ShoppingBag, MoreHorizontal, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 
 const SPLIT_TYPES = ['equal', 'exact', 'percentage'] as const
@@ -216,13 +216,16 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
         <button onClick={() => router.back()} className="self-start text-[#8E8E9A] hover:text-[#F2F2F7] transition-colors">
           <ArrowLeft size={20} />
         </button>
-        <div className="w-16 h-16 rounded-full bg-[rgba(239,68,68,0.1)] flex items-center justify-center">
-          <Lock size={28} className="text-[#EF4444]" />
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/trip-closed-meme.jpg"
+          alt="Bahute Badhiya — Ee lo Jamun Khao"
+          className="w-64 rounded-xl shadow-lg mx-auto"
+        />
         <div className="space-y-2">
-          <p className="text-[#F2F2F7] font-semibold text-lg">Trip band ho gayi! 🔒</p>
+          <p className="text-[#F2F2F7] font-semibold text-lg">Bhai trip band ho gayi! 🔒</p>
           <p className="text-[#8E8E9A] text-sm max-w-xs mx-auto">
-            Closed trip mein expenses edit nahi ho sakte. Organiser trip re-open kare.
+            Organiser ne taala laga diya. Ab koi naya expense nahi daal sakte. Kha lo Jamun! 🫐
           </p>
         </div>
         <button
