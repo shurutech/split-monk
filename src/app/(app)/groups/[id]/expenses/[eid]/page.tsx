@@ -100,7 +100,8 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
   }
 
   const catLabel = EXPENSE_CATEGORIES.find((c) => c.value === expense.category)?.label ?? 'Other'
-  const canDelete = user && (user.uid === expense.createdBy || user.uid === group?.createdBy)
+  const isClosed  = group?.status === 'closed'
+  const canDelete = user && (user.uid === expense.createdBy || user.uid === group?.createdBy) && !isClosed
 
   return (
     <div className="max-w-lg mx-auto space-y-5">
