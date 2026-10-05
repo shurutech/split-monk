@@ -69,6 +69,7 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
         title:     d.title,
         amount:    d.amount,
         paidBy:    d.paidBy,
+        payments:  d.payments ?? undefined,
         splitType: d.splitType,
         splits:    d.splits,
         date:      tsToDate(d.date),
@@ -78,6 +79,7 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
         createdAt: tsToDate(d.createdAt),
         updatedAt: tsToDate(d.updatedAt),
         isDeleted: d.isDeleted,
+        isContribution: d.isContribution ?? false,
       })
     }, () => {})
   }, [id, eid])
@@ -206,6 +208,29 @@ export default function EditExpensePage({ params }: { params: Promise<{ id: stri
       <div className="max-w-lg mx-auto space-y-4">
         <div className="h-6 w-32 bg-[#1A1A1F] rounded animate-pulse" />
         <div className="h-40 bg-[#1A1A1F] rounded animate-pulse" />
+      </div>
+    )
+  }
+
+  // Pool rounds and multi-payer expenses can't be saved from this single-payer form —
+  // doing so would drop `payments` and corrupt balances.
+  if (expense.isContribution || expense.payments) {
+    return (
+      <div className="max-w-lg mx-auto pb-10 flex flex-col items-center justify-center min-h-[60vh] text-center gap-4">
+        <p className="text-[#F2F2F7] font-semibold text-lg">
+          {expense.isContribution ? 'Edit this from the Trip Pool card' : 'Multi-payer expenses can’t be edited here'}
+        </p>
+        <p className="text-[#8E8E9A] text-sm max-w-xs mx-auto">
+          {expense.isContribution
+            ? 'Open the trip and use Edit on the contribution round in the Trip Pool card.'
+            : 'Delete this expense and add it again to change who paid.'}
+        </p>
+        <button
+          onClick={() => router.push(`/groups/${id}`)}
+          className="px-6 py-2.5 rounded-sm bg-[#1A1A1F] border border-[#2A2A32] text-[#8E8E9A] hover:text-[#F2F2F7] transition-colors text-sm"
+        >
+          Back to trip
+        </button>
       </div>
     )
   }

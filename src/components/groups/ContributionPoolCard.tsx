@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Wallet, CheckCircle2, Clock, ChevronDown, ChevronUp, Copy, Check, IndianRupee } from 'lucide-react'
+import { Wallet, CheckCircle2, Clock, ChevronDown, ChevronUp, Copy, Check, IndianRupee, Pencil, Trash2 } from 'lucide-react'
 import { formatINR } from '@/lib/calculations'
 import { RecordContributionsSheet } from './RecordContributionsSheet'
+import { softDeleteExpense } from '@/lib/firestore'
 import { toast } from 'sonner'
 import type { Group, Expense, User } from '@/types'
 
@@ -18,6 +19,8 @@ export function ContributionPoolCard({ group, expenses, members, currentUid }: P
   const [sheetOpen,   setSheetOpen]   = useState(false)
   const [expanded,    setExpanded]    = useState(false)
   const [upiCopied,   setUpiCopied]   = useState(false)
+  const [editingRound, setEditingRound] = useState<Expense | null>(null)
+  const [confirmDelId, setConfirmDelId] = useState<string | null>(null)
 
   const perPerson  = group.contributionAmount!
   const organiser  = members.find((u) => u.uid === group.createdBy)
@@ -44,6 +47,27 @@ export function ContributionPoolCard({ group, expenses, members, currentUid }: P
   const progress       = Math.min(totalCollected / totalExpected, 1)
 
   const isOrganiser = currentUid === group.createdBy
+  const canEdit     = isOrganiser && group.status !== 'archived' && group.status !== 'closed'
+
+  const rounds = expenses
+    .filter((e) => e.isContribution && !e.isDeleted)
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
+
+  function nameOf(uid: string) {
+    return members.find((u) => u.uid === uid)?.displayName?.split(' ')[0] ?? '…'
+  }
+
+  async function handleDeleteRound(id: string) {
+    if (confirmDelId !== id) { setConfirmDelId(id); return }
+    try {
+      await softDeleteExpense(group.id, id)
+      toast.success('Round deleted')
+    } catch {
+      toast.error('Failed to delete round')
+    } finally {
+      setConfirmDelId(null)
+    }
+  }
 
   return (
     <>
@@ -151,6 +175,50 @@ export function ContributionPoolCard({ group, expenses, members, currentUid }: P
               )
             })}
 
+            {/* Recorded rounds — organiser can correct or delete a wrong entry */}
+            {rounds.length > 0 && (
+              <div className="border-t border-[#2A2A32]">
+                <p className="px-4 pt-2.5 pb-1 text-[10px] uppercase tracking-wide text-faint">Recorded rounds</p>
+                {rounds.map((r, i) => (
+                  <div key={r.id} className="flex items-start gap-3 px-4 py-2.5 border-b border-[#1A1A1F] last:border-b-0">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-[#F2F2F7]">
+                        Round {i + 1} · <span className="font-mono">{formatINR(r.amount)}</span>
+                        <span className="text-faint text-xs ml-1">
+                          {r.date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        </span>
+                      </p>
+                      <p className="text-[10px] text-faint">
+                        {Object.entries(r.payments ?? {}).map(([uid, amt]) => `${nameOf(uid)} ${formatINR(amt)}`).join(' · ')}
+                      </p>
+                    </div>
+                    {canEdit && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => setEditingRound(r)}
+                          className="p-1.5 rounded-sm border border-[#2A2A32] text-[#8E8E9A] hover:text-[#F2F2F7] transition-colors"
+                          title="Edit round"
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRound(r.id)}
+                          className={`p-1.5 rounded-sm border transition-colors ${
+                            confirmDelId === r.id
+                              ? 'border-[#F87171] text-[#F87171] text-[10px] px-2'
+                              : 'border-[#2A2A32] text-[#8E8E9A] hover:text-[#F87171]'
+                          }`}
+                          title="Delete round"
+                        >
+                          {confirmDelId === r.id ? 'Confirm?' : <Trash2 size={12} />}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Pending invitees — not yet joined, always unpaid */}
             {pendingInvites.map((email) => (
               <div key={email} className="flex items-center gap-3 px-4 py-2.5 border-b border-[#1A1A1F] last:border-b-0">
@@ -215,6 +283,16 @@ export function ContributionPoolCard({ group, expenses, members, currentUid }: P
         members={members}
         paidMap={paidMap}
         currentUid={currentUid}
+      />
+
+      <RecordContributionsSheet
+        open={!!editingRound}
+        onClose={() => setEditingRound(null)}
+        group={group}
+        members={members}
+        paidMap={paidMap}
+        currentUid={currentUid}
+        editing={editingRound}
       />
     </>
   )

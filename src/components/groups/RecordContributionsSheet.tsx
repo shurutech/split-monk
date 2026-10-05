@@ -3,10 +3,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { X, Wallet, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { addExpense } from '@/lib/firestore'
+import { addExpense, updateExpense } from '@/lib/firestore'
 import { formatINR } from '@/lib/calculations'
 import { notifyGroup } from '@/lib/notify'
-import type { Group, User } from '@/types'
+import type { Expense, Group, User } from '@/types'
 
 interface Props {
   open:        boolean
@@ -15,9 +15,10 @@ interface Props {
   members:     User[]
   paidMap:     Record<string, number>  // uid → total paise already contributed
   currentUid:  string
+  editing?:    Expense | null          // when set, the sheet corrects this existing round instead of adding a new one
 }
 
-export function RecordContributionsSheet({ open, onClose, group, members, paidMap, currentUid }: Props) {
+export function RecordContributionsSheet({ open, onClose, group, members, paidMap, currentUid, editing }: Props) {
   const perPerson = group.contributionAmount!
 
   // Per-member: checked = contributing this round, amountStr = rupee string
@@ -27,21 +28,33 @@ export function RecordContributionsSheet({ open, onClose, group, members, paidMa
 
   const sheetRef = useRef<HTMLDivElement>(null)
 
+  // What each member paid in OTHER rounds (excludes the round being edited)
+  function paidElsewhere(uid: string) {
+    return (paidMap[uid] ?? 0) - (editing?.payments?.[uid] ?? 0)
+  }
+
   // Reset state each time sheet opens
   useEffect(() => {
     if (!open) return
     const initChecked: Record<string, boolean> = {}
     const initAmounts: Record<string, string>  = {}
     for (const uid of group.members) {
-      const alreadyPaid = paidMap[uid] ?? 0
-      const remaining   = perPerson - alreadyPaid
+      if (editing) {
+        // Edit mode: prefill with exactly what this round recorded
+        const paid = editing.payments?.[uid] ?? 0
+        initChecked[uid] = paid > 0
+        initAmounts[uid] = paid > 0 ? String(paid / 100) : '0'
+        continue
+      }
+      const remaining = perPerson - (paidMap[uid] ?? 0)
       // Pre-check members who still owe something
       initChecked[uid] = remaining > 0
       initAmounts[uid] = remaining > 0 ? String(Math.max(remaining / 100, 0)) : '0'
     }
     setChecked(initChecked)
     setAmounts(initAmounts)
-  }, [open, group.members, paidMap, perPerson])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, group.members, perPerson, editing?.id])
 
   useEffect(() => {
     if (!open) return
@@ -72,6 +85,24 @@ export function RecordContributionsSheet({ open, onClose, group, members, paidMa
     try {
       // splits: organiser absorbs the entire pool amount
       const splits: Record<string, number> = { [group.createdBy]: total }
+
+      if (editing) {
+        await updateExpense(group.id, editing.id, {
+          title:          editing.title,
+          amount:         total,
+          paidBy:         'multiple',
+          payments,
+          splits,
+          splitType:      'exact',
+          category:       'contribution',
+          date:           editing.date,
+          notes:          editing.notes,
+          isContribution: true,
+        })
+        toast.success('Contribution round updated')
+        onClose()
+        return
+      }
 
       await addExpense(group.id, {
         title:          `Trip pool — ${formatINR(perPerson)}/person`,
@@ -105,7 +136,7 @@ export function RecordContributionsSheet({ open, onClose, group, members, paidMa
       toast.success(`Recorded ${formatINR(total)} pool contribution`)
       onClose()
     } catch {
-      toast.error('Failed to record contributions')
+      toast.error(editing ? 'Failed to update round' : 'Failed to record contributions')
     } finally {
       setSaving(false)
     }
@@ -140,7 +171,7 @@ export function RecordContributionsSheet({ open, onClose, group, members, paidMa
           <div className="flex items-center gap-2">
             <Wallet size={15} className="text-[#7C6BF8]" />
             <h2 className="text-[#F2F2F7] text-sm font-semibold">
-              Record contributions
+              {editing ? 'Edit contribution round' : 'Record contributions'}
             </h2>
           </div>
           <button
@@ -154,8 +185,9 @@ export function RecordContributionsSheet({ open, onClose, group, members, paidMa
         {/* Scrollable body — min-h-0 is required for flex children to actually overflow-scroll */}
         <div className="overflow-y-auto min-h-0 flex-1 px-5 py-4 space-y-4">
           <p className="text-faint text-xs">
-            Check each member who transferred money to you. Adjust amounts if
-            they paid a partial contribution.
+            {editing
+              ? 'Correct who paid and how much in this round. Set a member to ₹0 or untick them to remove them from this round.'
+              : 'Check each member who transferred money to you. Adjust amounts if they paid a partial contribution.'}
           </p>
 
           {/* Member rows */}
@@ -174,7 +206,9 @@ export function RecordContributionsSheet({ open, onClose, group, members, paidMa
             ))}
             {group.members.map((uid) => {
               const user = members.find((u) => u.uid === uid);
-              const alreadyPaid = paidMap[uid] ?? 0;
+              const alreadyPaid = paidElsewhere(uid);
+              const thisAmt = payments[uid] ?? 0;
+              const overBy = alreadyPaid + thisAmt - perPerson;
               const isChecked = checked[uid] ?? false;
               const isSelf = uid === currentUid;
 
@@ -221,9 +255,14 @@ export function RecordContributionsSheet({ open, onClose, group, members, paidMa
                     </p>
                     <p className="text-faint text-[10px] truncate">
                       {alreadyPaid > 0
-                        ? `Already paid ${formatINR(alreadyPaid)}`
+                        ? `${editing ? 'Paid in other rounds' : 'Already paid'} ${formatINR(alreadyPaid)}`
                         : (user?.email ?? "")}
                     </p>
+                    {overBy > 0 && (
+                      <p className="text-warning text-[10px]">
+                        {formatINR(overBy)} above the {formatINR(perPerson)} target
+                      </p>
+                    )}
                   </div>
 
                   {/* Amount input */}

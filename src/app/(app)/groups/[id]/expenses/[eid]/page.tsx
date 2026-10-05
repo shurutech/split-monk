@@ -113,7 +113,8 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
         <h1 className="font-display font-bold text-xl text-[#F2F2F7] flex-1 truncate" style={{ fontFamily: 'var(--font-syne, sans-serif)' }}>
           {expense.title}
         </h1>
-        {canDelete && (
+        {/* Pool rounds are edited from the Trip Pool card; multi-payer edit isn't supported on the generic form */}
+        {canDelete && !expense.isContribution && !expense.payments && (
           <button
             onClick={() => router.push(`/groups/${id}/expenses/${eid}/edit`)}
             className="p-2 rounded-sm border border-[#2A2A32] text-[#8E8E9A] hover:text-[#F2F2F7] hover:border-faint transition-colors shrink-0"
@@ -165,7 +166,7 @@ export default function ExpenseDetailPage({ params }: { params: Promise<{ id: st
           <div>
             <p className="text-[#7C6BF8] text-xs font-semibold">Trip pool contribution</p>
             <p className="text-faint text-xs mt-0.5">
-              Members transferred funds to the organiser. This is recorded as a pool contribution — not a regular expense.
+              Members transferred funds to the organiser. This is recorded as a pool contribution — not a regular expense. To correct it, use Edit on the Trip Pool card.
             </p>
           </div>
         </div>

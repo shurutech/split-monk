@@ -89,6 +89,10 @@ export function GroupSettingsSheet({ open, onClose, group, expenses, balances }:
       toast.error('Contribution must be at least ₹1')
       return
     }
+    if (group.contributionAmount && !contributionPaise && expenses.some((e) => e.isContribution)) {
+      toast.error('Delete the recorded pool contributions first — they still affect balances')
+      return
+    }
     setSaving(true)
     try {
       await updateGroup(group.id, {
