@@ -7,7 +7,7 @@ import { getUserById, getUserByEmail, removeGroupMember, removePendingInvite } f
 import { db } from '@/lib/firebase'
 import { doc, updateDoc, arrayUnion, writeBatch } from 'firebase/firestore'
 import { UserAvatar } from '@/components/ui/UserAvatar'
-import { Crown, Mail, Clock, UserPlus, Loader2, X, LogOut, UserMinus, Copy, Check } from 'lucide-react'
+import { Crown, Mail, Clock, UserPlus, Loader2, X, LogOut, UserMinus, Copy, Check, RotateCw, Link2 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { InvitePayload } from '@/app/api/invite/route'
 
@@ -26,6 +26,9 @@ interface Props {
 // Firestore doc IDs can't contain '.' — encode as ','
 function encodeEmail(email: string) { return email.replace(/\./g, ',') }
 
+// Minimum gap between resends to the same email (in-memory, resets on refresh)
+const RESEND_COOLDOWN_MS = 5 * 60 * 1000
+
 export function MemberList({
   groupId, memberUids, pendingInvites, createdBy,
   currentUid, groupName, coverColor, balances, onLeft,
@@ -39,6 +42,10 @@ export function MemberList({
   const [copiedUpi,     setCopiedUpi]     = useState<string | null>(null)
   // pending confirm: uid (member) or email (pending invite)
   const [confirmTarget, setConfirmTarget] = useState<string | null>(null)
+  // email being resent, or 'all' for a bulk resend; null = none in progress
+  const [resending,     setResending]     = useState<string | null>(null)
+  const [lastSent,      setLastSent]      = useState<Record<string, number>>({})
+  const [linkCopied,    setLinkCopied]    = useState(false)
 
   useEffect(() => {
     memberUids.forEach(async (uid) => {
@@ -97,6 +104,72 @@ export function MemberList({
     }
   }
 
+  function buildInvitePayload(emails: string[]): InvitePayload {
+    return {
+      groupId,
+      groupName,
+      coverColor,
+      invitedBy:     users[currentUid]?.displayName ?? 'Someone',
+      pendingEmails: emails,
+      memberNames:   memberUids
+        .filter((uid) => uid !== currentUid)
+        .map((uid) => users[uid]?.displayName?.split(' ')[0] ?? '')
+        .filter(Boolean),
+    }
+  }
+
+  // Organiser-only: re-send the invite email to one pending email, or all of them ('all')
+  async function handleResend(target: string) {
+    const now      = Date.now()
+    const requested = target === 'all' ? pendingInvites : [target]
+    const emails   = requested.filter((e) => now - (lastSent[e] ?? 0) >= RESEND_COOLDOWN_MS)
+
+    if (emails.length === 0) {
+      toast.error('Invite was just sent — try again in a few minutes')
+      return
+    }
+
+    setResending(target)
+    try {
+      const res  = await fetch('/api/invite', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(buildInvitePayload(emails)),
+      })
+      const data = await res.json().catch(() => ({})) as {
+        skipped?: boolean
+        results?: { email: string; success: boolean }[]
+      }
+
+      if (data.skipped) { toast.error('Email sending isn’t configured'); return }
+
+      const ok     = (data.results ?? []).filter((r) => r.success).map((r) => r.email)
+      const failed = (data.results ?? []).filter((r) => !r.success)
+
+      if (ok.length > 0) {
+        setLastSent((prev) => ({ ...prev, ...Object.fromEntries(ok.map((e) => [e, now])) }))
+      }
+      if (failed.length > 0) {
+        toast.error(`Couldn’t send to ${failed.map((f) => f.email.split('@')[0]).join(', ')}`)
+      }
+      if (ok.length > 0) {
+        toast.success(ok.length === 1 ? `Invite resent to ${ok[0].split('@')[0]}` : `Invite resent to ${ok.length} people`)
+      }
+      if (!res.ok && ok.length === 0 && failed.length === 0) toast.error('Failed to resend invite')
+    } catch {
+      toast.error('Failed to resend invite')
+    } finally {
+      setResending(null)
+    }
+  }
+
+  function handleCopyLink() {
+    navigator.clipboard.writeText(`${window.location.origin}/groups/${groupId}`)
+    setLinkCopied(true)
+    setTimeout(() => setLinkCopied(false), 2000)
+    toast.success('Trip link copied — share it on WhatsApp')
+  }
+
   async function handleAdd() {
     const email = emailInput.trim().toLowerCase()
     if (!email) return
@@ -124,21 +197,10 @@ export function MemberList({
         await updateDoc(groupRef, { members: arrayUnion(existing.uid) })
 
         if (existing.email) {
-          const payload: InvitePayload = {
-            groupId,
-            groupName,
-            coverColor,
-            invitedBy:     users[currentUid]?.displayName ?? 'Someone',
-            pendingEmails: [existing.email],
-            memberNames:   memberUids
-              .filter((uid) => uid !== currentUid)
-              .map((uid) => users[uid]?.displayName?.split(' ')[0] ?? '')
-              .filter(Boolean),
-          }
           fetch('/api/invite', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify(payload),
+            body:    JSON.stringify(buildInvitePayload([existing.email])),
           }).catch(() => {})
         }
 
@@ -150,21 +212,10 @@ export function MemberList({
         batch.set(inviteRef, { email, groupIds: arrayUnion(groupId) }, { merge: true })
         await batch.commit()
 
-        const payload: InvitePayload = {
-          groupId,
-          groupName,
-          coverColor,
-          invitedBy:     users[currentUid]?.displayName ?? 'Someone',
-          pendingEmails: [email],
-          memberNames:   memberUids
-            .filter((uid) => uid !== currentUid)
-            .map((uid) => users[uid]?.displayName?.split(' ')[0] ?? '')
-            .filter(Boolean),
-        }
         fetch('/api/invite', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify(payload),
+          body:    JSON.stringify(buildInvitePayload([email])),
         }).catch(() => {})
 
         toast.success(`Invite sent to ${email.split('@')[0]}`)
@@ -296,6 +347,35 @@ export function MemberList({
         )
       })}
 
+      {/* Organiser-only: bulk resend + shareable link for people who missed the email */}
+      {isOrganiser && pendingInvites.length > 0 && (
+        <div className="flex items-center justify-between gap-2 pt-2 pb-1 px-1">
+          <p className="text-faint text-[10px] uppercase tracking-wider">
+            Awaiting {pendingInvites.length} {pendingInvites.length === 1 ? 'invite' : 'invites'}
+          </p>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={handleCopyLink}
+              className="flex items-center gap-1 px-2 py-1 rounded-sm border border-[#2A2A32] text-[#8E8E9A] hover:text-[#F2F2F7] hover:border-faint text-[10px] transition-colors"
+              title="Copy trip link to share manually"
+            >
+              {linkCopied ? <Check size={11} className="text-success" /> : <Link2 size={11} />}
+              {linkCopied ? 'Copied' : 'Copy link'}
+            </button>
+            {pendingInvites.length > 1 && (
+              <button
+                onClick={() => handleResend('all')}
+                disabled={resending !== null}
+                className="flex items-center gap-1 px-2 py-1 rounded-sm bg-[#7C6BF8] text-white text-[10px] font-medium hover:bg-[#6B5CE7] disabled:opacity-50 transition-colors"
+              >
+                {resending === 'all' ? <Loader2 size={11} className="animate-spin" /> : <RotateCw size={11} />}
+                Resend all
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Pending invites */}
       {pendingInvites.map((email) => {
         const isThisRemoving = removing === email
@@ -314,6 +394,21 @@ export function MemberList({
             <span className="flex items-center gap-1 text-warning text-[10px] font-medium shrink-0 mr-1">
               <Clock size={10} /> Invited
             </span>
+
+            {/* Organiser can resend the invite email */}
+            {isOrganiser && !isConfirming && (
+              <button
+                onClick={() => handleResend(email)}
+                disabled={resending !== null}
+                className="p-1.5 rounded text-[#8E8E9A] hover:text-[#7C6BF8] hover:bg-[rgba(124,107,248,0.08)] transition-colors disabled:opacity-40 shrink-0"
+                title="Resend invite email"
+              >
+                {resending === email || resending === 'all'
+                  ? <Loader2 size={14} className="animate-spin" />
+                  : <RotateCw size={14} />
+                }
+              </button>
+            )}
 
             {/* Organiser can cancel pending invites */}
             {isOrganiser && (
