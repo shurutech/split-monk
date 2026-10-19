@@ -53,7 +53,7 @@ export function UPIPrompt() {
 
   return (
     // Backdrop
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div data-app-modal className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       {/* Sheet */}
       <div className="w-full max-w-sm bg-[#111113] border border-[#2A2A32] rounded-xl p-5 space-y-4 animate-in slide-in-from-bottom-4 duration-300">
 
