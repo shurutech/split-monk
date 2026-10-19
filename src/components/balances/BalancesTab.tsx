@@ -3,10 +3,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Balance, Expense, Group, Settlement, SettlementSuggestion, User } from '@/types'
 import { formatINR } from '@/lib/calculations'
-import { getUserById, recordSettlement } from '@/lib/firestore'
+import { getUserById, recordSettlement, voidSettlement } from '@/lib/firestore'
 import { notifyGroup } from '@/lib/notify'
 import { UserAvatar } from '@/components/ui/UserAvatar'
-import { ArrowRight, CheckCircle2, Loader2, Mail, History, Smartphone, ChevronDown, ChevronUp, Copy, Bell, BellRing } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Loader2, Mail, History, Smartphone, ChevronDown, ChevronUp, Copy, Bell, BellRing, Undo2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Props {
@@ -36,6 +36,9 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
   const [copiedUpi,          setCopiedUpi]          = useState<string | null>(null)
   const [reminding,          setReminding]          = useState<string | null>(null)   // uid being reminded, or 'bulk', or 'test'
   const [reminded,           setReminded]           = useState<Set<string>>(new Set()) // "from-to" keys already sent this session
+  const [undoTarget,         setUndoTarget]         = useState<string | null>(null)    // settlement id with the undo form open
+  const [undoReason,         setUndoReason]         = useState('')
+  const [undoing,            setUndoing]            = useState<string | null>(null)    // settlement id being undone
 
   useEffect(() => {
     const toFetch = new Set<string>([
@@ -177,6 +180,53 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
       toast.error('Failed to record settlement')
     } finally {
       setSettling(null)
+    }
+  }
+
+  // Same people who can record a payment can undo it (+ whoever recorded it, e.g. a former organiser)
+  function canUndo(s: Settlement) {
+    if (s.voidedAt || group.status === 'archived') return false
+    return s.from === currentUid || s.to === currentUid || s.settledBy === currentUid || group.createdBy === currentUid
+  }
+
+  async function handleUndo(s: Settlement) {
+    const reason = undoReason.trim()
+    if (!reason) { toast.error('Add a reason so everyone knows why'); return }
+    setUndoing(s.id)
+    try {
+      await voidSettlement(
+        group.id,
+        s.id,
+        { voidedBy: currentUid, reason },
+        expenses,
+        recordedSettlements,
+        group.members,
+        group.pendingInvites ?? [],
+      )
+
+      // Tell everyone involved except the person who did it — fire-and-forget
+      const targets = [...new Set([s.from, s.to, s.settledBy])]
+        .filter((uid) => uid !== currentUid && !isPendingKey(uid))
+      notifyGroup({
+        type:       'settlement_voided',
+        groupId:    group.id,
+        groupName:  group.name,
+        actorUid:   currentUid,
+        targetUids: targets,
+        title:      'Payment undone',
+        body:       `${name(s.from)} → ${name(s.to)} ${formatINR(s.amount)} · ${reason}`,
+        url:        `/groups/${group.id}`,
+      })
+
+      setUndoTarget(null)
+      setUndoReason('')
+      toast.success('Payment undone')
+    } catch (err) {
+      toast.error(err instanceof Error && err.message === 'Payment was already undone'
+        ? 'This payment was already undone'
+        : 'Failed to undo payment')
+    } finally {
+      setUndoing(null)
     }
   }
 
@@ -636,37 +686,90 @@ export function BalancesTab({ group, balances, settlements, recordedSettlements,
             <History size={12} /> Payment history
           </h3>
           <div className="space-y-2">
-            {recordedSettlements.map((s) => (
+            {recordedSettlements.map((s) => {
+              const voided = !!s.voidedAt
+              return (
               <div
                 key={s.id}
-                className="flex items-center gap-3 py-2.5 px-3 rounded-sm border border-[#2A2A32] bg-[#111113]"
+                className={`rounded-sm border border-[#2A2A32] bg-[#111113] ${voided ? 'opacity-60' : ''}`}
               >
-                {avatar(s.from, 28)}
-                <div className="flex-1 min-w-0">
-                  <p className="text-[#F2F2F7] text-xs truncate">
-                    <span className="font-medium">{name(s.from)}</span>
-                    <span className="text-faint mx-1">paid</span>
-                    <span className="font-medium">{name(s.to)}</span>
-                  </p>
-                  {s.note && (
-                    <p className="text-faint text-[10px] truncate mt-0.5">
-                      {s.note}
+                <div className="flex items-center gap-3 py-2.5 px-3">
+                  {avatar(s.from, 28)}
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-[#F2F2F7] text-xs truncate ${voided ? 'line-through' : ''}`}>
+                      <span className="font-medium">{name(s.from)}</span>
+                      <span className="text-faint mx-1">paid</span>
+                      <span className="font-medium">{name(s.to)}</span>
                     </p>
+                    {s.note && (
+                      <p className="text-faint text-[10px] truncate mt-0.5">
+                        {s.note}
+                      </p>
+                    )}
+                    {voided && (
+                      <p className="text-warning text-[10px] mt-0.5">
+                        Undone by {s.voidedBy ? name(s.voidedBy) : 'someone'}
+                        {s.voidReason ? ` — ${s.voidReason}` : ''}
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className={`font-mono text-xs font-medium ${voided ? 'text-faint line-through' : 'text-success'}`}>
+                      {formatINR(s.amount)}
+                    </p>
+                    <p className="text-faint text-[10px] mt-0.5">
+                      {new Date(s.settledAt).toLocaleDateString("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                      })}
+                    </p>
+                  </div>
+                  {canUndo(s) && undoTarget !== s.id && (
+                    <button
+                      onClick={() => { setUndoTarget(s.id); setUndoReason('') }}
+                      className="p-1.5 rounded text-[#8E8E9A] hover:text-[#F87171] hover:bg-[rgba(248,113,113,0.08)] transition-colors shrink-0"
+                      title="Undo this payment"
+                    >
+                      <Undo2 size={14} />
+                    </button>
                   )}
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="font-mono text-xs text-success font-medium">
-                    {formatINR(s.amount)}
-                  </p>
-                  <p className="text-faint text-[10px] mt-0.5">
-                    {new Date(s.settledAt).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                    })}
-                  </p>
-                </div>
+
+                {undoTarget === s.id && (
+                  <div className="border-t border-[#1A1A1F] px-3 py-2.5 space-y-2">
+                    <p className="text-[#8E8E9A] text-[11px]">
+                      This puts {formatINR(s.amount)} back on the balances. Everyone involved is told.
+                    </p>
+                    <input
+                      value={undoReason}
+                      onChange={(e) => setUndoReason(e.target.value)}
+                      placeholder="Reason: e.g. money not received"
+                      maxLength={120}
+                      autoFocus
+                      className="w-full bg-[#1A1A1F] border border-[#2A2A32] rounded-sm px-3 py-1.5 text-[#F2F2F7] text-xs placeholder-faint focus:outline-none focus:border-[#7C6BF8] transition-all"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => { setUndoTarget(null); setUndoReason('') }}
+                        disabled={undoing === s.id}
+                        className="px-3 py-1.5 rounded-sm border border-[#2A2A32] text-[#8E8E9A] hover:text-[#F2F2F7] text-xs transition-colors"
+                      >
+                        Keep
+                      </button>
+                      <button
+                        onClick={() => handleUndo(s)}
+                        disabled={undoing === s.id || !undoReason.trim()}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm bg-[#F87171] text-white text-xs font-medium hover:bg-[#ef4444] disabled:opacity-40 transition-colors"
+                      >
+                        {undoing === s.id && <Loader2 size={12} className="animate-spin" />}
+                        Undo payment
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}

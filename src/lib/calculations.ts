@@ -83,7 +83,7 @@ export function calculatePercentageSplit(
  * pendingEmails: invited members not yet signed in — their split shares are
  * keyed by email in the splits map.
  *
- * settlements: recorded payments that reduce outstanding balances.
+ * settlements: recorded payments that reduce outstanding balances (voided ones are ignored).
  * A settlement { from, to, amount } means `from` paid `to` amount paise,
  * so `from` gets a credit and `to` gets a debit of that amount.
  */
@@ -115,8 +115,9 @@ export function calculateBalances(
       })
     })
 
-  // Apply settlements: `from` paid `to`, so from's debt reduces, to's credit reduces
-  settlements.forEach((s) => {
+  // Apply settlements: `from` paid `to`, so from's debt reduces, to's credit reduces.
+  // Voided (undone) settlements are kept for history but never count.
+  settlements.filter((s) => !s.voidedAt).forEach((s) => {
     net[s.from] = (net[s.from] ?? 0) + s.amount
     net[s.to]   = (net[s.to]   ?? 0) - s.amount
   })

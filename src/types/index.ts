@@ -61,6 +61,10 @@ export interface Settlement {
   settledAt: Date
   settledBy: string
   note?: string
+  // Set when the payment is undone. The doc is kept for the audit trail and ignored by the balance engine.
+  voidedAt?: Date
+  voidedBy?: string
+  voidReason?: string
 }
 
 export interface Balance {

@@ -105,6 +105,9 @@ function docToSettlement(id: string, data: Record<string, unknown>): Settlement 
     settledAt: tsToDate(data.settledAt),
     settledBy: data.settledBy as string,
     note:      data.note as string | undefined,
+    voidedAt:   data.voidedAt ? tsToDate(data.voidedAt) : undefined,
+    voidedBy:   data.voidedBy as string | undefined,
+    voidReason: data.voidReason as string | undefined,
   }
 }
 
@@ -562,6 +565,45 @@ export async function recordSettlement(
 
     if (fullySettled) {
       tx.update(groupRef, { status: 'settled' })
+    }
+  })
+}
+
+// Undo a recorded payment. Soft-void: the doc stays for the audit trail, balances ignore it.
+// If the group was 'settled' and this payment's removal leaves money owed, it goes back to 'active'.
+export async function voidSettlement(
+  groupId: string,
+  settlementId: string,
+  data: { voidedBy: string; reason: string },
+  allExpenses: Expense[],
+  allSettlements: Settlement[],
+  allMembers: string[],
+  pendingInvites: string[] = [],
+): Promise<void> {
+  const reason = data.reason.trim()
+  if (!reason) throw new Error('A reason is required')
+
+  const settlRef = doc(db, `groups/${groupId}/settlements`, settlementId)
+  const groupRef = doc(db, 'groups', groupId)
+
+  // Balances as they will be once this payment no longer counts
+  const settlementsAfter = allSettlements.filter((s) => s.id !== settlementId)
+  const balancesAfter    = calculateBalances(allExpenses, allMembers, pendingInvites, settlementsAfter)
+  const stillSettled     = balancesAfter.every((b) => b.net === 0)
+
+  await runTransaction(db, async (tx) => {
+    const [settlSnap, groupSnap] = await Promise.all([tx.get(settlRef), tx.get(groupRef)])
+    if (!settlSnap.exists())          throw new Error('Payment not found')
+    if (settlSnap.data().voidedAt)    throw new Error('Payment was already undone')
+
+    tx.update(settlRef, {
+      voidedAt:   serverTimestamp(),
+      voidedBy:   data.voidedBy,
+      voidReason: reason,
+    })
+
+    if (groupSnap.exists() && groupSnap.data().status === 'settled' && !stillSettled) {
+      tx.update(groupRef, { status: 'active' })
     }
   })
 }

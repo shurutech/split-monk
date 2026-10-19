@@ -54,11 +54,35 @@ service cloud.firestore {
           get(/databases/$(database)/documents/groups/$(groupId)).data.createdBy;
       }
 
-      // Settlements subcollection — append-only during normal use; only creator can delete on group wipe
+      // Settlements subcollection.
+      // create: any member, but only as themselves and only for a payment they are part of
+      //         (payer or receiver) or as the organiser — matches who sees "Mark settled".
+      // update: undo only — sets the void fields, once, by the payer, receiver, recorder or organiser.
+      // delete: only the creator, on group wipe.
       match /settlements/{settlementId} {
-        allow read, create: if isMemberOrPending();
-        allow delete:       if request.auth.uid ==
-          get(/databases/$(database)/documents/groups/$(groupId)).data.createdBy;
+        function groupData() {
+          return get(/databases/$(database)/documents/groups/$(groupId)).data;
+        }
+
+        allow read: if isMemberOrPending();
+
+        allow create: if request.auth.uid in groupData().members
+                      && request.resource.data.settledBy == request.auth.uid
+                      && (request.auth.uid == request.resource.data.from
+                          || request.auth.uid == request.resource.data.to
+                          || request.auth.uid == groupData().createdBy);
+
+        allow update: if request.auth.uid in groupData().members
+                      && !('voidedAt' in resource.data)
+                      && request.resource.data.diff(resource.data).affectedKeys()
+                           .hasOnly(['voidedAt', 'voidedBy', 'voidReason'])
+                      && request.resource.data.voidedBy == request.auth.uid
+                      && (request.auth.uid == resource.data.from
+                          || request.auth.uid == resource.data.to
+                          || request.auth.uid == resource.data.settledBy
+                          || request.auth.uid == groupData().createdBy);
+
+        allow delete: if request.auth.uid == groupData().createdBy;
       }
     }
   }

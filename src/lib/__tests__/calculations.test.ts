@@ -7,7 +7,7 @@ import {
   getOptimalSettlements,
   toPaise,
 } from '../calculations'
-import type { Expense } from '@/types'
+import type { Expense, Settlement } from '@/types'
 
 const makeExpense = (overrides: Partial<Expense>): Expense => ({
   id: 'e1',
@@ -166,5 +166,27 @@ describe('getOptimalSettlements', () => {
       copy.find((b) => b.uid === to)!.net   -= amount
     })
     copy.forEach((b) => expect(Math.abs(b.net)).toBeLessThanOrEqual(1))
+  })
+})
+
+describe('calculateBalances — voided settlements', () => {
+  const expense = makeExpense({ amount: 10000, paidBy: 'A', splits: { A: 5000, B: 5000 } })
+  const payment: Settlement = {
+    id: 's1', from: 'B', to: 'A', amount: 5000,
+    settledAt: new Date(), settledBy: 'B',
+  }
+
+  it('counts an active settlement', () => {
+    const b = calculateBalances([expense], ['A', 'B'], [], [payment])
+    expect(b.find((x) => x.uid === 'A')?.net).toBe(0)
+    expect(b.find((x) => x.uid === 'B')?.net).toBe(0)
+  })
+
+  it('ignores a voided settlement — the debt comes back', () => {
+    const voided: Settlement = { ...payment, voidedAt: new Date(), voidedBy: 'A', voidReason: 'not received' }
+    const b = calculateBalances([expense], ['A', 'B'], [], [voided])
+    expect(b.find((x) => x.uid === 'A')?.net).toBe(5000)
+    expect(b.find((x) => x.uid === 'B')?.net).toBe(-5000)
+    expect(b.reduce((s, x) => s + x.net, 0)).toBe(0)
   })
 })
