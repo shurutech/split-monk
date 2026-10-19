@@ -14,7 +14,7 @@ import { MemberList } from '@/components/groups/MemberList'
 import { SpendingAnalytics } from '@/components/groups/SpendingAnalytics'
 import { GroupSettingsSheet } from '@/components/groups/GroupSettingsSheet'
 import { ContributionPoolCard } from '@/components/groups/ContributionPoolCard'
-import { GroupCardSkeleton } from '@/components/ui/LoadingSkeleton'
+import { GroupPageSkeleton } from '@/components/ui/LoadingSkeleton'
 import { ArrowLeft, Plus, Users, ReceiptText, Scale, BarChart2, Download, Settings } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
@@ -47,14 +47,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
     })
   }, [group?.members.join(',')])
 
-  if (loading) {
-    return (
-      <div className="max-w-2xl mx-auto space-y-4">
-        <div className="h-6 w-32 bg-[#1A1A1F] rounded animate-pulse" />
-        <GroupCardSkeleton />
-      </div>
-    )
-  }
+  if (loading) return <GroupPageSkeleton />
 
   if (error) {
     return (
